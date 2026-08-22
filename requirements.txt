@@ -1,0 +1,23 @@
+<![CDATA[# ===========================================================================
+# Recon365 — Dependencias del Proyecto
+# ===========================================================================
+# Motor de inferencia: Ollama (instalar por separado)
+# Modelo recomendado: llama3.1:8b (8 GB VRAM)
+# ===========================================================================
+
+# --- Scraping y navegación ---
+playwright>=1.40.0             # Automatización de navegadores headless
+
+# --- HTTP y comunicación con API local ---
+requests>=2.31.0               # Llamadas HTTP al endpoint de Ollama
+urllib3>=2.1.0                 # Gestión de conexiones HTTP
+
+# --- Validación y serialización de datos ---
+pydantic>=2.5.0                # Modelos de datos con tipado estricto
+
+# --- Interfaz y logging ---
+rich>=13.7.0                   # Logging en consola con colores y tablas
+
+# --- Procesamiento de datos ---
+# (estándar de Python: csv, json, pathlib — no requieren instalación)
+]]>

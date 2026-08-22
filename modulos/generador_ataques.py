@@ -1,0 +1,477 @@
+<![CDATA["""
+modulos/generador_ataques.py — Generador de vectores de Spear Phishing para Recon365.
+
+Toma el perfil psicográfico generado por el Motor J4N14 y redacta
+correos de Spear Phishing altamente persuasivos basados en los
+intereses y vulnerabilidades detectadas del objetivo.
+
+Modelos Predictivos:
+    - JERARQUIA: Correo urgente con autoridad (directivos)
+    - ESTILO_VIDA: Premio falso o promoción (intereses personales)
+    - TECNOLOGICO: Falsa actualización de seguridad (técnicos)
+
+Uso:
+    from modulos.generador_ataques import crear_pretexto, generar_reporte_final
+    vector = crear_pretexto(perfil_j4n14)
+    reporte = generar_reporte_final(objetivo, perfil, vector)
+"""
+
+import random
+from datetime import datetime, timezone
+from typing import Any
+
+from utilidades.logger import obtener_logger
+
+from configuracion import NOMBRE_MOTOR, VERSION
+
+log = obtener_logger(__name__)
+
+
+# ============================================================================
+# PLANTILLAS DE VECTORES DE ATAQUE
+# ============================================================================
+
+PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
+    {
+        "tipo": "urgencia_financiera",
+        "asunto": "🔴 [URGENTE] Revisión inmediata requerida — Presupuesto Q{quarter} {year}",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Se ha detectado una discrepancia en los números del presupuesto "
+            "del Q{quarter} que requiere su aprobación inmediata antes del "
+            "cierre de hoy.\n\n"
+            "El equipo de finanzas ha preparado un resumen ejecutivo con las "
+            "correcciones necesarias. Por favor, revise el documento adjunto "
+            "y confirme su aprobación.\n\n"
+            "📎 Documento: Presupuesto_Q{quarter}_{year}_Revisado.pdf\n\n"
+            "Necesitamos su respuesta antes de las 17:00 hrs.\n\n"
+            "Saludos cordiales,\n"
+            "Departamento de Finanzas\n"
+            "{empresa}"
+        ),
+    },
+    {
+        "tipo": "auditoria_compliance",
+        "asunto": "⚠️ Auditoría de Compliance — Acción requerida de {rol}",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Como parte de la auditoría anual de compliance, necesitamos "
+            "que verifique y confirme los accesos de su equipo a los "
+            "sistemas internos.\n\n"
+            "Este proceso es obligatorio para todos los {rol} y debe "
+            "completarse en las próximas 24 horas para evitar la "
+            "suspensión temporal de credenciales.\n\n"
+            "🔗 Portal de verificación: [enlace]\n\n"
+            "Si tiene preguntas, contacte al equipo de Seguridad TI.\n\n"
+            "Atentamente,\n"
+            "Oficina de Compliance\n"
+            "{empresa}"
+        ),
+    },
+    {
+        "tipo": "reunion_directiva",
+        "asunto": "📋 Agenda confidencial — Reunión de directiva {date}",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Adjunto la agenda confidencial para la reunión de directiva "
+            "programada para el {date}. Se incluyen puntos sensibles sobre "
+            "reestructuración y proyecciones del próximo trimestre.\n\n"
+            "Por favor, revise el documento antes de la sesión y prepare "
+            "sus comentarios sobre la sección 3 (Inversiones Estratégicas).\n\n"
+            "📎 Agenda_Directiva_Confidencial_{date}.docx\n\n"
+            "Este documento es estrictamente confidencial.\n\n"
+            "Cordialmente,\n"
+            "Asistente de Dirección\n"
+            "{empresa}"
+        ),
+    },
+]
+
+PLANTILLAS_ESTILO_VIDA: list[dict[str, str]] = [
+    {
+        "tipo": "premio_sorteo",
+        "asunto": "🎉 ¡Felicidades {nombre}! Has sido seleccionado/a — {interes}",
+        "cuerpo": (
+            "¡Hola {nombre}!\n\n"
+            "Nos complace informarte que has sido seleccionado/a como "
+            "ganador/a de nuestro sorteo exclusivo relacionado con "
+            "{interes}.\n\n"
+            "Tu premio incluye:\n"
+            "🏆 {premio}\n\n"
+            "Para reclamar tu premio, solo necesitas confirmar tus datos "
+            "en el siguiente enlace antes del {date}:\n\n"
+            "🔗 Confirmar premio: [enlace]\n\n"
+            "¡No dejes pasar esta oportunidad!\n\n"
+            "El equipo de Premios Exclusivos"
+        ),
+    },
+    {
+        "tipo": "descuento_exclusivo",
+        "asunto": "🔥 Oferta exclusiva para ti — 70% en {interes}",
+        "cuerpo": (
+            "Hola {nombre},\n\n"
+            "Porque sabemos que te apasiona {interes}, hemos preparado "
+            "una oferta exclusiva solo para ti:\n\n"
+            "💰 70% de descuento en {premio}\n"
+            "⏰ Oferta válida solo por 24 horas\n\n"
+            "Hemos notado tu interés en {interes} y queremos "
+            "recompensarte con esta promoción irrepetible.\n\n"
+            "🔗 Aprovechar oferta: [enlace]\n\n"
+            "¡No te lo pierdas!\n\n"
+            "Equipo de Ofertas Personalizadas"
+        ),
+    },
+    {
+        "tipo": "invitacion_evento",
+        "asunto": "📩 Invitación VIP — Evento exclusivo de {interes}",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Tienes una invitación VIP para un evento exclusivo "
+            "relacionado con {interes} que se celebrará el {date}.\n\n"
+            "Detalles del evento:\n"
+            "📍 Ubicación: Por confirmar al registrarte\n"
+            "🎫 Acceso: VIP — Solo por invitación\n"
+            "🌟 Incluye: {premio}\n\n"
+            "Confirma tu asistencia:\n"
+            "🔗 Registro VIP: [enlace]\n\n"
+            "Plazas limitadas.\n\n"
+            "Coordinación de Eventos"
+        ),
+    },
+]
+
+PLANTILLAS_TECNOLOGICO: list[dict[str, str]] = [
+    {
+        "tipo": "alerta_seguridad",
+        "asunto": "🔒 [CRÍTICO] Vulnerabilidad detectada en {tech} — Actualice ahora",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Nuestro equipo de seguridad ha detectado una vulnerabilidad "
+            "crítica (CVE-{year}-{cve_id}) que afecta a {tech}.\n\n"
+            "Severidad: CRÍTICA (CVSS 9.8)\n"
+            "Impacto: Ejecución remota de código\n"
+            "Sistemas afectados: {tech}\n\n"
+            "Es imperativo que actualice inmediatamente. Hemos preparado "
+            "un parche de emergencia:\n\n"
+            "📎 Parche: {tech}_Security_Patch_{year}.exe\n"
+            "🔗 Descarga directa: [enlace]\n\n"
+            "No aplazar esta actualización puede comprometer la "
+            "infraestructura de {empresa}.\n\n"
+            "Equipo de Seguridad TI"
+        ),
+    },
+    {
+        "tipo": "herramienta_beta",
+        "asunto": "🚀 Acceso exclusivo beta — Nueva herramienta de {tech}",
+        "cuerpo": (
+            "Hola {nombre},\n\n"
+            "Has sido seleccionado/a para el programa beta exclusivo de "
+            "una nueva herramienta de desarrollo para {tech}.\n\n"
+            "Características:\n"
+            "⚡ Rendimiento 10x superior\n"
+            "🔧 Integración nativa con {tech}\n"
+            "🤖 Asistente IA incorporado\n"
+            "📊 Análisis de código avanzado\n\n"
+            "Solo se han enviado 50 invitaciones. Descarga la versión "
+            "beta antes de que se agoten:\n\n"
+            "🔗 Descargar beta: [enlace]\n\n"
+            "Tu feedback como experto en {tech} es muy valioso.\n\n"
+            "Equipo de Desarrollo"
+        ),
+    },
+    {
+        "tipo": "certificacion_gratuita",
+        "asunto": "🎓 Certificación GRATUITA de {tech} — Cupo limitado",
+        "cuerpo": (
+            "Estimado/a {nombre},\n\n"
+            "Nos complace informarte que has sido seleccionado/a para "
+            "obtener una certificación profesional de {tech} de forma "
+            "completamente gratuita.\n\n"
+            "Detalles:\n"
+            "📚 Certificación: {tech} Professional Advanced\n"
+            "💰 Valor original: $599 USD — HOY GRATIS\n"
+            "📅 Fecha límite de registro: {date}\n"
+            "🏅 Validez internacional\n\n"
+            "Regístrate ahora:\n"
+            "🔗 Registro: [enlace]\n\n"
+            "Solo quedan {plazas} plazas disponibles.\n\n"
+            "Equipo de Formación Profesional"
+        ),
+    },
+]
+
+# Premios por categoría para personalización
+PREMIOS_ESTILO_VIDA: dict[str, list[str]] = {
+    "viajes": [
+        "2 boletos de avión a cualquier destino",
+        "Estancia de 5 noches en resort all-inclusive",
+        "Crucero para 2 personas por el Mediterráneo",
+    ],
+    "deportes": [
+        "Entradas VIP para la final de la Champions League",
+        "Kit deportivo profesional valorado en $500",
+        "Suscripción anual premium a plataforma deportiva",
+    ],
+    "tecnologia": [
+        "iPhone 16 Pro Max último modelo",
+        "MacBook Pro M4 de última generación",
+        "Setup gaming completo valorado en $3,000",
+    ],
+    "default": [
+        "Tarjeta regalo de $500 USD",
+        "Suscripción premium anual a servicio exclusivo",
+        "Kit de experiencias personalizadas",
+    ],
+}
+
+
+# ============================================================================
+# FUNCIONES DE GENERACIÓN DE VECTORES
+# ============================================================================
+
+def _obtener_datos_dinamicos() -> dict[str, str]:
+    """
+    Genera datos dinámicos para personalizar las plantillas.
+
+    Returns:
+        Diccionario con valores dinámicos: quarter, year, date, cve_id, plazas.
+    """
+    ahora: datetime = datetime.now(timezone.utc)
+    quarter: int = (ahora.month - 1) // 3 + 1
+
+    return {
+        "quarter": str(quarter),
+        "year": str(ahora.year),
+        "date": ahora.strftime("%d/%m/%Y"),
+        "cve_id": str(random.randint(10000, 99999)),
+        "plazas": str(random.randint(3, 15)),
+    }
+
+
+def _seleccionar_premio(intereses: list[str]) -> str:
+    """
+    Selecciona un premio relevante basado en los intereses del objetivo.
+
+    Args:
+        intereses: Lista de intereses detectados por J4N14.
+
+    Returns:
+        Premio personalizado como string.
+    """
+    for interes in intereses:
+        interes_lower: str = interes.lower()
+        for categoria, premios in PREMIOS_ESTILO_VIDA.items():
+            if categoria in interes_lower:
+                return random.choice(premios)
+
+    return random.choice(PREMIOS_ESTILO_VIDA["default"])
+
+
+def _generar_vector_jerarquia(perfil: dict[str, Any]) -> dict[str, str]:
+    """
+    Genera un vector de Spear Phishing para objetivos de JERARQUÍA.
+
+    Correos urgentes con tono de autoridad dirigidos a directivos.
+
+    Args:
+        perfil: Perfil psicográfico del Motor J4N14.
+
+    Returns:
+        Diccionario con: tipo, asunto, cuerpo.
+    """
+    plantilla: dict[str, str] = random.choice(PLANTILLAS_JERARQUIA)
+    datos: dict[str, str] = _obtener_datos_dinamicos()
+
+    variables: dict[str, str] = {
+        "nombre": perfil.get("nombre_objetivo", "Estimado/a"),
+        "rol": perfil.get("rol_detectado", "Director/a"),
+        "empresa": perfil.get("empresa", "la empresa"),
+        **datos,
+    }
+
+    return {
+        "tipo_vector": f"JERARQUIA — {plantilla['tipo']}",
+        "asunto": plantilla["asunto"].format(**variables),
+        "cuerpo": plantilla["cuerpo"].format(**variables),
+    }
+
+
+def _generar_vector_estilo_vida(perfil: dict[str, Any]) -> dict[str, str]:
+    """
+    Genera un vector de Spear Phishing para objetivos de ESTILO_VIDA.
+
+    Premios falsos y promociones basados en intereses personales.
+
+    Args:
+        perfil: Perfil psicográfico del Motor J4N14.
+
+    Returns:
+        Diccionario con: tipo, asunto, cuerpo.
+    """
+    plantilla: dict[str, str] = random.choice(PLANTILLAS_ESTILO_VIDA)
+    datos: dict[str, str] = _obtener_datos_dinamicos()
+    intereses: list[str] = perfil.get("intereses", ["actividades exclusivas"])
+
+    interes_principal: str = intereses[0] if intereses else "actividades exclusivas"
+    premio: str = _seleccionar_premio(intereses)
+
+    variables: dict[str, str] = {
+        "nombre": perfil.get("nombre_objetivo", "amigo/a"),
+        "interes": interes_principal,
+        "premio": premio,
+        **datos,
+    }
+
+    return {
+        "tipo_vector": f"ESTILO_VIDA — {plantilla['tipo']}",
+        "asunto": plantilla["asunto"].format(**variables),
+        "cuerpo": plantilla["cuerpo"].format(**variables),
+    }
+
+
+def _generar_vector_tecnologico(perfil: dict[str, Any]) -> dict[str, str]:
+    """
+    Genera un vector de Spear Phishing para objetivos TECNOLÓGICOS.
+
+    Falsas alertas de seguridad y actualizaciones dirigidas a técnicos.
+
+    Args:
+        perfil: Perfil psicográfico del Motor J4N14.
+
+    Returns:
+        Diccionario con: tipo, asunto, cuerpo.
+    """
+    plantilla: dict[str, str] = random.choice(PLANTILLAS_TECNOLOGICO)
+    datos: dict[str, str] = _obtener_datos_dinamicos()
+    intereses: list[str] = perfil.get("intereses", ["software"])
+
+    # Detectar tecnología principal
+    tech: str = "el sistema"
+    for interes in intereses:
+        if any(
+            kw in interes.lower()
+            for kw in [
+                "python", "java", "node", "react", "docker",
+                "kubernetes", "aws", "azure", "linux", "windows",
+                "vscode", "git", "sql", "cloud", "devops",
+            ]
+        ):
+            tech = interes
+            break
+
+    variables: dict[str, str] = {
+        "nombre": perfil.get("nombre_objetivo", "Estimado/a"),
+        "tech": tech,
+        "empresa": perfil.get("empresa", "su organización"),
+        **datos,
+    }
+
+    return {
+        "tipo_vector": f"TECNOLOGICO — {plantilla['tipo']}",
+        "asunto": plantilla["asunto"].format(**variables),
+        "cuerpo": plantilla["cuerpo"].format(**variables),
+    }
+
+
+def crear_pretexto(perfil: dict[str, Any]) -> dict[str, Any]:
+    """
+    Función principal — Genera un vector de Spear Phishing personalizado
+    basado en el perfil psicográfico del objetivo.
+
+    Selecciona automáticamente el modelo predictivo adecuado según
+    la categoría asignada por el Motor J4N14.
+
+    Args:
+        perfil: Perfil psicográfico generado por perfilador_ia.analizar_perfil().
+
+    Returns:
+        Diccionario con el vector de ataque:
+            - tipo_vector: str
+            - asunto: str
+            - cuerpo: str
+            - categoria_usada: str
+            - confianza_perfil: float
+    """
+    categoria: str = perfil.get("categoria_predictiva", "ESTILO_VIDA").upper()
+
+    log.info(f"Generando vector — Categoría predictiva: {categoria}")
+
+    # Dispatch por categoría
+    generadores: dict[str, Any] = {
+        "JERARQUIA": _generar_vector_jerarquia,
+        "ESTILO_VIDA": _generar_vector_estilo_vida,
+        "TECNOLOGICO": _generar_vector_tecnologico,
+    }
+
+    generador = generadores.get(categoria, _generar_vector_estilo_vida)
+    vector: dict[str, str] = generador(perfil)
+
+    # Agregar metadata
+    vector["categoria_usada"] = categoria
+    vector["confianza_perfil"] = perfil.get("confianza", 0.0)
+
+    log.info(f"Vector generado: {vector['tipo_vector']}")
+    return vector
+
+
+def generar_reporte_final(
+    objetivo: dict[str, str],
+    perfil: dict[str, Any],
+    vector: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Empaqueta todos los datos en un reporte JSON final estructurado.
+
+    Combina: datos del objetivo + perfil psicográfico + vector de ataque
+    en un único diccionario listo para serializar.
+
+    Args:
+        objetivo: Datos originales del objetivo (nombre, url, empresa).
+        perfil: Perfil psicográfico del Motor J4N14.
+        vector: Vector de ataque generado.
+
+    Returns:
+        Diccionario completo del reporte final.
+    """
+    reporte: dict[str, Any] = {
+        "sistema": {
+            "nombre": "Recon365",
+            "motor": NOMBRE_MOTOR,
+            "version": VERSION,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        },
+        "objetivo": {
+            "nombre": objetivo.get("nombre", "desconocido"),
+            "url": objetivo.get("url", ""),
+            "empresa": objetivo.get("empresa", "no_especificada"),
+        },
+        "perfil_psicografico": {
+            "rol_detectado": perfil.get("rol_detectado", "no_determinado"),
+            "industria": perfil.get("industria", "no_determinado"),
+            "intereses": perfil.get("intereses", []),
+            "necesidades_inferidas": perfil.get("necesidades_inferidas", []),
+            "categoria_predictiva": perfil.get("categoria_predictiva", ""),
+            "vulnerabilidades": perfil.get("vulnerabilidades", []),
+            "confianza": perfil.get("confianza", 0.0),
+            "razonamiento": perfil.get("razonamiento", ""),
+        },
+        "vector_ataque": {
+            "tipo": vector.get("tipo_vector", ""),
+            "asunto_correo": vector.get("asunto", ""),
+            "cuerpo_correo": vector.get("cuerpo", ""),
+            "categoria_usada": vector.get("categoria_usada", ""),
+        },
+        "disclaimer": (
+            "Este reporte fue generado como parte de una auditoría de "
+            "seguridad AUTORIZADA. El uso no autorizado de esta información "
+            "es ilegal. Solo para fines de pentesting y red teaming."
+        ),
+    }
+
+    log.info(
+        f"Reporte final generado para '{objetivo.get('nombre', '?')}' — "
+        f"Vector: {vector.get('tipo_vector', '?')}"
+    )
+
+    return reporte
+]]>
