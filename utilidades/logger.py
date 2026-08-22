@@ -2,7 +2,7 @@
 utilidades/logger.py — Sistema de logging centralizado para Recon365.
 
 Proporciona un logger profesional con salida dual:
-    - Consola: Coloreada con Rich para legibilidad
+    - Consola: Coloreada con Rich para legibilidad (UTF-8 forzado)
     - Archivo: Rotativo para persistencia
 
 Uso:
@@ -11,6 +11,7 @@ Uso:
     log.info("Operación completada")
 """
 
+import io
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
@@ -45,7 +46,9 @@ _TEMA_RECON365 = Theme({
     "ataque": "red italic",          # Para mensajes del generador
 })
 
-_consola = Console(theme=_TEMA_RECON365)
+# Forzar UTF-8 en la salida de consola para compatibilidad con Windows
+_stdout_utf8 = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace") if hasattr(sys.stdout, 'buffer') else sys.stdout
+_consola = Console(theme=_TEMA_RECON365, file=_stdout_utf8, highlight=False)
 
 # ============================================================================
 # REGISTRO DE LOGGERS CREADOS (evitar duplicados)
@@ -126,15 +129,15 @@ def imprimir_banner() -> None:
     _consola.print()
     _consola.print(
         "[bold magenta]"
-        "╔══════════════════════════════════════════════════╗\n"
-        "║        🗺️  M.A.P.A. — Recon365 × J4N14          ║\n"
-        "║   Módulo de Análisis de Perfiles Abiertos       ║\n"
-        "║   Motor de Inferencia de IA Local               ║\n"
-        "╚══════════════════════════════════════════════════╝"
+        "+=================================================+\n"
+        "|       M.A.P.A. -- Recon365 x J4N14             |\n"
+        "|  Modulo de Analisis de Perfiles Abiertos        |\n"
+        "|  Motor de Inferencia de IA Local               |\n"
+        "+=================================================+"
         "[/bold magenta]"
     )
     _consola.print(
-        "[dim]⚠️  Solo para auditorías de seguridad autorizadas.[/dim]"
+        "[dim]ADVERTENCIA: Solo para auditorias de seguridad autorizadas.[/dim]"
     )
     _consola.print()
 
@@ -148,15 +151,15 @@ def imprimir_separador(titulo: str = "") -> None:
 
 
 def imprimir_exito(mensaje: str) -> None:
-    """Imprime un mensaje de éxito destacado."""
-    _consola.print(f"[success]✅ {mensaje}[/success]")
+    """Imprime un mensaje de exito destacado."""
+    _consola.print(f"[success][OK] {mensaje}[/success]")
 
 
 def imprimir_error(mensaje: str) -> None:
     """Imprime un mensaje de error destacado."""
-    _consola.print(f"[error]❌ {mensaje}[/error]")
+    _consola.print(f"[error][ERROR] {mensaje}[/error]")
 
 
 def imprimir_motor(mensaje: str) -> None:
     """Imprime un mensaje del Motor J4N14."""
-    _consola.print(f"[motor]🧠 [J4N14] {mensaje}[/motor]")
+    _consola.print(f"[motor][J4N14] {mensaje}[/motor]")

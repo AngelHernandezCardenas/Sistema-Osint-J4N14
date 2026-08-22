@@ -20,10 +20,17 @@ Uso:
 
 import argparse
 import asyncio
+import io
 import sys
 import time
 from pathlib import Path
 from typing import Any
+
+# Forzar UTF-8 en la terminal de Windows antes de cualquier salida
+if sys.stdout and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if sys.stderr and hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from rich.console import Console
 from rich.table import Table
@@ -354,10 +361,10 @@ def main() -> None:
     try:
         asyncio.run(ejecutar_pipeline(args))
     except KeyboardInterrupt:
-        consola.print("\n[yellow]⚠️  Ejecución interrumpida por el usuario.[/yellow]")
+        consola.print("\n[yellow]Ejecucion interrumpida por el usuario.[/yellow]")
         sys.exit(0)
     except Exception as error:
-        consola.print(f"\n[red bold]💀 Error fatal: {error}[/red bold]")
+        consola.print(f"\n[red bold]Error fatal: {error}[/red bold]")
         log.critical(f"Error fatal: {error}", exc_info=True)
         sys.exit(1)
 
