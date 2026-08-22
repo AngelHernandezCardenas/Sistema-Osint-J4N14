@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 main.py — Orquestador principal de Recon365 × Motor J4N14.
 
 Pipeline de ejecución:
@@ -364,4 +364,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-]]>

@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 modulos/generador_ataques.py — Generador de vectores de Spear Phishing para Recon365.
 
 Toma el perfil psicográfico generado por el Motor J4N14 y redacta
@@ -474,4 +474,3 @@ def generar_reporte_final(
     )
 
     return reporte
-]]>

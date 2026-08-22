@@ -1,4 +1,4 @@
-<![CDATA[# Archivo .gitkeep para mantener la carpeta inputs/ en el repositorio
+# Archivo .gitkeep para mantener la carpeta inputs/ en el repositorio
 # Coloque aquí sus archivos de objetivos (.txt o .csv)
 #
 # Formato .txt (una URL por línea):
@@ -8,4 +8,3 @@
 # Formato .csv (con columnas nombre,url,empresa):
 #   nombre,url,empresa
 #   Juan Pérez,https://ejemplo.com/perfil/juanperez,Empresa X
-]]>

@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 configuracion.py — Variables globales y configuración del sistema Recon365.
 
 Este módulo centraliza todas las constantes, rutas y parámetros
@@ -81,4 +81,3 @@ CATEGORIAS_PREDICTIVAS: Final[list[str]] = [
 
 # Extensiones de archivo de entrada soportadas
 EXTENSIONES_ENTRADA: Final[list[str]] = [".txt", ".csv"]
-]]>

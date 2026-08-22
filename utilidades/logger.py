@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 utilidades/logger.py — Sistema de logging centralizado para Recon365.
 
 Proporciona un logger profesional con salida dual:
@@ -160,4 +160,3 @@ def imprimir_error(mensaje: str) -> None:
 def imprimir_motor(mensaje: str) -> None:
     """Imprime un mensaje del Motor J4N14."""
     _consola.print(f"[motor]🧠 [J4N14] {mensaje}[/motor]")
-]]>

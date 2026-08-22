@@ -1,4 +1,4 @@
-<![CDATA[# Recon365 — Archivos generados
+# Recon365 — Archivos generados
 *.log
 __pycache__/
 *.pyc
@@ -24,4 +24,3 @@ data/outputs/capturas/*.png
 .DS_Store
 Thumbs.db
 desktop.ini
-]]>

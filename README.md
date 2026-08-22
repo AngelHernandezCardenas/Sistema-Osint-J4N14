@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🗺️ M.A.P.A. — Módulo de Análisis de Perfiles Abiertos
 
@@ -143,4 +143,3 @@ Este proyecto se distribuye bajo una licencia de uso ético. Ver [LICENSE](LICEN
 *Recon365 × J4N14 Engine*
 
 </div>
-]]>

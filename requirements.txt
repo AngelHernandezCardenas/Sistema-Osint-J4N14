@@ -1,4 +1,4 @@
-<![CDATA[# ===========================================================================
+# ===========================================================================
 # Recon365 — Dependencias del Proyecto
 # ===========================================================================
 # Motor de inferencia: Ollama (instalar por separado)
@@ -20,4 +20,3 @@ rich>=13.7.0                   # Logging en consola con colores y tablas
 
 # --- Procesamiento de datos ---
 # (estándar de Python: csv, json, pathlib — no requieren instalación)
-]]>

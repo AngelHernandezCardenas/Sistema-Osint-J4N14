@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 modulos — Paquete principal de módulos operativos de Recon365.
 
 Contiene:
@@ -18,4 +18,3 @@ __all__: list[str] = [
     "crear_pretexto",
     "generar_reporte_final",
 ]
-]]>

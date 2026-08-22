@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 utilidades/gestor_archivos.py — Gestión de archivos I/O para Recon365.
 
 Funciones auxiliares para:
@@ -211,4 +211,3 @@ def guardar_captura(
 
     log.info(f"Captura guardada: {ruta_captura}")
     return ruta_captura
-]]>

@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 modulos/perfilador_ia.py — Motor J4N14 de perfilamiento con IA local.
 
 Este es el CEREBRO del sistema Recon365. Conecta con un modelo de lenguaje
@@ -501,4 +501,3 @@ def analizar_perfil(
             "error": str(error),
             "confianza": 0.0,
         }
-]]>

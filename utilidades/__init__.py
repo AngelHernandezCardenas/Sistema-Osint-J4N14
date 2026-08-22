@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 utilidades — Paquete de utilidades auxiliares de Recon365.
 
 Contiene:
@@ -21,4 +21,3 @@ __all__: list[str] = [
     "guardar_captura",
     "asegurar_directorios",
 ]
-]]>

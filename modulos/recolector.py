@@ -1,4 +1,4 @@
-<![CDATA["""
+"""
 modulos/recolector.py — Módulo de scraping y recolección visual para Recon365.
 
 Utiliza Playwright en modo headless para:
@@ -343,4 +343,3 @@ async def recolectar_objetivo(
     log.info(f"Recolección de '{nombre}': {estado}")
 
     return resultado
-]]>
