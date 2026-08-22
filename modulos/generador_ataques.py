@@ -34,7 +34,7 @@ log = obtener_logger(__name__)
 PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
     {
         "tipo": "urgencia_financiera",
-        "asunto": "🔴 [URGENTE] Revisión inmediata requerida — Presupuesto Q{quarter} {year}",
+        "asunto": "[URGENTE] Revisión inmediata requerida — Presupuesto Q{quarter} {year}",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Se ha detectado una discrepancia en los números del presupuesto "
@@ -43,7 +43,7 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
             "El equipo de finanzas ha preparado un resumen ejecutivo con las "
             "correcciones necesarias. Por favor, revise el documento adjunto "
             "y confirme su aprobación.\n\n"
-            "📎 Documento: Presupuesto_Q{quarter}_{year}_Revisado.pdf\n\n"
+            "[ADJUNTO] Documento: Presupuesto_Q{quarter}_{year}_Revisado.pdf\n\n"
             "Necesitamos su respuesta antes de las 17:00 hrs.\n\n"
             "Saludos cordiales,\n"
             "Departamento de Finanzas\n"
@@ -52,7 +52,7 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
     },
     {
         "tipo": "auditoria_compliance",
-        "asunto": "⚠️ Auditoría de Compliance — Acción requerida de {rol}",
+        "asunto": "[ALERTA] Auditoría de Compliance — Acción requerida de {rol}",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Como parte de la auditoría anual de compliance, necesitamos "
@@ -61,7 +61,7 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
             "Este proceso es obligatorio para todos los {rol} y debe "
             "completarse en las próximas 24 horas para evitar la "
             "suspensión temporal de credenciales.\n\n"
-            "🔗 Portal de verificación: [enlace]\n\n"
+            "[ENLACE] Portal de verificación: [enlace]\n\n"
             "Si tiene preguntas, contacte al equipo de Seguridad TI.\n\n"
             "Atentamente,\n"
             "Oficina de Compliance\n"
@@ -70,7 +70,7 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
     },
     {
         "tipo": "reunion_directiva",
-        "asunto": "📋 Agenda confidencial — Reunión de directiva {date}",
+        "asunto": "[DOC] Agenda confidencial — Reunión de directiva {date}",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Adjunto la agenda confidencial para la reunión de directiva "
@@ -78,7 +78,7 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
             "reestructuración y proyecciones del próximo trimestre.\n\n"
             "Por favor, revise el documento antes de la sesión y prepare "
             "sus comentarios sobre la sección 3 (Inversiones Estratégicas).\n\n"
-            "📎 Agenda_Directiva_Confidencial_{date}.docx\n\n"
+            "[ADJUNTO] Agenda_Directiva_Confidencial_{date}.docx\n\n"
             "Este documento es estrictamente confidencial.\n\n"
             "Cordialmente,\n"
             "Asistente de Dirección\n"
@@ -90,50 +90,50 @@ PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
 PLANTILLAS_ESTILO_VIDA: list[dict[str, str]] = [
     {
         "tipo": "premio_sorteo",
-        "asunto": "🎉 ¡Felicidades {nombre}! Has sido seleccionado/a — {interes}",
+        "asunto": "¡Felicidades {nombre}! Has sido seleccionado/a — {interes}",
         "cuerpo": (
             "¡Hola {nombre}!\n\n"
             "Nos complace informarte que has sido seleccionado/a como "
             "ganador/a de nuestro sorteo exclusivo relacionado con "
             "{interes}.\n\n"
             "Tu premio incluye:\n"
-            "🏆 {premio}\n\n"
+            "Premio: {premio}\n\n"
             "Para reclamar tu premio, solo necesitas confirmar tus datos "
             "en el siguiente enlace antes del {date}:\n\n"
-            "🔗 Confirmar premio: [enlace]\n\n"
+            "[ENLACE] Confirmar premio: [enlace]\n\n"
             "¡No dejes pasar esta oportunidad!\n\n"
             "El equipo de Premios Exclusivos"
         ),
     },
     {
         "tipo": "descuento_exclusivo",
-        "asunto": "🔥 Oferta exclusiva para ti — 70% en {interes}",
+        "asunto": "[OFERTA] Exclusiva para ti — 70% en {interes}",
         "cuerpo": (
             "Hola {nombre},\n\n"
             "Porque sabemos que te apasiona {interes}, hemos preparado "
             "una oferta exclusiva solo para ti:\n\n"
-            "💰 70% de descuento en {premio}\n"
-            "⏰ Oferta válida solo por 24 horas\n\n"
+            "Descuento: 70% en {premio}\n"
+            "Tiempo: Oferta válida solo por 24 horas\n\n"
             "Hemos notado tu interés en {interes} y queremos "
             "recompensarte con esta promoción irrepetible.\n\n"
-            "🔗 Aprovechar oferta: [enlace]\n\n"
+            "[ENLACE] Aprovechar oferta: [enlace]\n\n"
             "¡No te lo pierdas!\n\n"
             "Equipo de Ofertas Personalizadas"
         ),
     },
     {
         "tipo": "invitacion_evento",
-        "asunto": "📩 Invitación VIP — Evento exclusivo de {interes}",
+        "asunto": "[INVITACION] VIP — Evento exclusivo de {interes}",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Tienes una invitación VIP para un evento exclusivo "
             "relacionado con {interes} que se celebrará el {date}.\n\n"
             "Detalles del evento:\n"
-            "📍 Ubicación: Por confirmar al registrarte\n"
-            "🎫 Acceso: VIP — Solo por invitación\n"
-            "🌟 Incluye: {premio}\n\n"
+            "Ubicación: Por confirmar al registrarte\n"
+            "Acceso: VIP — Solo por invitación\n"
+            "Incluye: {premio}\n\n"
             "Confirma tu asistencia:\n"
-            "🔗 Registro VIP: [enlace]\n\n"
+            "[ENLACE] Registro VIP: [enlace]\n\n"
             "Plazas limitadas.\n\n"
             "Coordinación de Eventos"
         ),
@@ -143,7 +143,7 @@ PLANTILLAS_ESTILO_VIDA: list[dict[str, str]] = [
 PLANTILLAS_TECNOLOGICO: list[dict[str, str]] = [
     {
         "tipo": "alerta_seguridad",
-        "asunto": "🔒 [CRÍTICO] Vulnerabilidad detectada en {tech} — Actualice ahora",
+        "asunto": "[CRITICO] Vulnerabilidad detectada en {tech} — Actualice ahora",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Nuestro equipo de seguridad ha detectado una vulnerabilidad "
@@ -153,8 +153,8 @@ PLANTILLAS_TECNOLOGICO: list[dict[str, str]] = [
             "Sistemas afectados: {tech}\n\n"
             "Es imperativo que actualice inmediatamente. Hemos preparado "
             "un parche de emergencia:\n\n"
-            "📎 Parche: {tech}_Security_Patch_{year}.exe\n"
-            "🔗 Descarga directa: [enlace]\n\n"
+            "[ADJUNTO] Parche: {tech}_Security_Patch_{year}.exe\n"
+            "[ENLACE] Descarga directa: [enlace]\n\n"
             "No aplazar esta actualización puede comprometer la "
             "infraestructura de {empresa}.\n\n"
             "Equipo de Seguridad TI"
@@ -162,38 +162,38 @@ PLANTILLAS_TECNOLOGICO: list[dict[str, str]] = [
     },
     {
         "tipo": "herramienta_beta",
-        "asunto": "🚀 Acceso exclusivo beta — Nueva herramienta de {tech}",
+        "asunto": "[NUEVO] Acceso exclusivo beta — Nueva herramienta de {tech}",
         "cuerpo": (
             "Hola {nombre},\n\n"
             "Has sido seleccionado/a para el programa beta exclusivo de "
             "una nueva herramienta de desarrollo para {tech}.\n\n"
             "Características:\n"
-            "⚡ Rendimiento 10x superior\n"
-            "🔧 Integración nativa con {tech}\n"
-            "🤖 Asistente IA incorporado\n"
-            "📊 Análisis de código avanzado\n\n"
+            "- Rendimiento 10x superior\n"
+            "- Integración nativa con {tech}\n"
+            "- Asistente IA incorporado\n"
+            "- Análisis de código avanzado\n\n"
             "Solo se han enviado 50 invitaciones. Descarga la versión "
             "beta antes de que se agoten:\n\n"
-            "🔗 Descargar beta: [enlace]\n\n"
+            "[ENLACE] Descargar beta: [enlace]\n\n"
             "Tu feedback como experto en {tech} es muy valioso.\n\n"
             "Equipo de Desarrollo"
         ),
     },
     {
         "tipo": "certificacion_gratuita",
-        "asunto": "🎓 Certificación GRATUITA de {tech} — Cupo limitado",
+        "asunto": "[EDUCACION] Certificación GRATUITA de {tech} — Cupo limitado",
         "cuerpo": (
             "Estimado/a {nombre},\n\n"
             "Nos complace informarte que has sido seleccionado/a para "
             "obtener una certificación profesional de {tech} de forma "
             "completamente gratuita.\n\n"
             "Detalles:\n"
-            "📚 Certificación: {tech} Professional Advanced\n"
-            "💰 Valor original: $599 USD — HOY GRATIS\n"
-            "📅 Fecha límite de registro: {date}\n"
-            "🏅 Validez internacional\n\n"
+            "Curso: {tech} Professional Advanced\n"
+            "Costo: $599 USD — HOY GRATIS\n"
+            "Fecha límite de registro: {date}\n"
+            "Beneficio: Validez internacional\n\n"
             "Regístrate ahora:\n"
-            "🔗 Registro: [enlace]\n\n"
+            "[ENLACE] Registro: [enlace]\n\n"
             "Solo quedan {plazas} plazas disponibles.\n\n"
             "Equipo de Formación Profesional"
         ),

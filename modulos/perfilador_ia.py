@@ -101,6 +101,32 @@ ESQUEMA JSON DE SALIDA (OBLIGATORIO)
   "razonamiento": "string (breve justificación de la categoría elegida)"
 }
 
+═══════════════════════════════════════════════════════════
+EJEMPLO ONE-SHOT (NIVEL DE PROFUNDIDAD ESPERADO)
+═══════════════════════════════════════════════════════════
+Entrada de texto hipotética: "Soy Director Regional de Ventas. Viajo constantemente cerrando tratos y necesito que mi equipo cumpla las metas trimestrales cueste lo que cueste. No tengo tiempo para reuniones inútiles."
+
+Salida JSON Esperada:
+{
+  "nombre_objetivo": "Jane Doe",
+  "rol_detectado": "Director Regional de Ventas",
+  "industria": "Ventas / Negocios",
+  "intereses": ["Cierre de negocios", "Liderazgo de equipos", "Cumplimiento de metas", "Viajes de negocios"],
+  "necesidades_inferidas": [
+    "Necesidad extrema de optimizar su escaso tiempo libre",
+    "Presión constante por alcanzar cuotas trimestrales de ventas",
+    "Deseo de proyectar autoridad y control sobre su equipo"
+  ],
+  "categoria_predictiva": "JERARQUIA",
+  "vulnerabilidades": [
+    "Reacción impulsiva ante mensajes etiquetados como 'URGENTE' o relacionados a caídas en ventas",
+    "Receptividad a atajos ejecutivos o herramientas VIP que prometan ahorrar tiempo",
+    "Delegación rápida sin verificar correos que parezcan órdenes corporativas estándar"
+  ],
+  "confianza": 0.95,
+  "razonamiento": "El perfil revela un alto cargo gerencial (Director), enfoque agresivo en resultados trimestrales y falta de tiempo, rasgos clásicos del perfil JERARQUIA."
+}
+
 RESPONDE SOLO CON EL JSON. NADA MÁS."""
 
 

@@ -97,7 +97,7 @@ async def validar_perfil(url: str) -> bool:
             accesible: bool = 200 <= status < 400
             log.info(
                 f"Validación de '{url}': "
-                f"{'✅ Accesible' if accesible else '❌ No accesible'} "
+                f"{'[OK] Accesible' if accesible else '[FAIL] No accesible'} "
                 f"(HTTP {status})"
             )
             return accesible
@@ -339,7 +339,7 @@ async def recolectar_objetivo(
     # Marcar como exitoso si al menos el texto fue extraído
     resultado["exitoso"] = bool(resultado["texto_extraido"])
 
-    estado: str = "✅ EXITOSO" if resultado["exitoso"] else "⚠️ PARCIAL"
+    estado: str = "[OK] EXITOSO" if resultado["exitoso"] else "[WARN] PARCIAL"
     log.info(f"Recolección de '{nombre}': {estado}")
 
     return resultado

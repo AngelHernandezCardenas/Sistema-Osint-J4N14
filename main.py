@@ -15,7 +15,7 @@ Uso:
     python main.py --archivo objetivos.csv
     python main.py --archivo lista.txt
 
-⚠️ DISCLAIMER: Solo para auditorías de seguridad autorizadas.
+DISCLAIMER: Solo para auditorías de seguridad autorizadas.
 """
 
 import argparse
@@ -71,10 +71,10 @@ def parsear_argumentos() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="Recon365",
         description=(
-            f"{NOMBRE_SISTEMA} × {NOMBRE_MOTOR} — "
+            f"{NOMBRE_SISTEMA} x {NOMBRE_MOTOR} - "
             "Módulo de reconocimiento OSINT con perfilamiento IA."
         ),
-        epilog="⚠️  Solo para auditorías de seguridad autorizadas.",
+        epilog="ADVERTENCIA: Solo para auditorías de seguridad autorizadas.",
     )
     parser.add_argument(
         "--archivo",
@@ -163,7 +163,7 @@ def mostrar_resumen(
 
     # Tabla de resultados
     tabla = Table(
-        title=f"🗺️ {NOMBRE_SISTEMA} × {NOMBRE_MOTOR} — Resultados",
+        title=f"{NOMBRE_SISTEMA} x {NOMBRE_MOTOR} - Resultados",
         show_header=True,
         header_style="bold cyan",
     )
@@ -191,7 +191,7 @@ def mostrar_resumen(
         else:
             conf_str = f"[red]{confianza:.0%}[/red]"
 
-        estado_str: str = "[green]✅[/green]" if exitoso else "[red]❌[/red]"
+        estado_str: str = "[green][OK][/green]" if exitoso else "[red][FAIL][/red]"
 
         tabla.add_row(nombre, categoria, conf_str, tipo_vector, estado_str)
 
@@ -199,7 +199,7 @@ def mostrar_resumen(
     consola.print()
 
     # Estadísticas
-    consola.print(f"[bold]📊 Estadísticas:[/bold]")
+    consola.print(f"[bold]Estadísticas:[/bold]")
     consola.print(f"   Total de objetivos: {total}")
     consola.print(f"   Exitosos: [green]{exitosos}[/green]")
     consola.print(f"   Fallidos: [red]{fallidos}[/red]")
@@ -234,7 +234,7 @@ async def procesar_objetivo(
 
     try:
         # === FASE 1: RECOLECCIÓN ===
-        log.info("📡 Fase 1: Recolección de datos...")
+        log.info("Fase 1: Recolección de datos...")
         datos_recolectados: dict[str, Any] = await recolectar_objetivo(objetivo)
 
         if not datos_recolectados.get("exitoso", False):
@@ -247,7 +247,7 @@ async def procesar_objetivo(
         texto: str = datos_recolectados.get("texto_extraido", "")
 
         # === FASE 2: PERFILAMIENTO IA (Motor J4N14) ===
-        log.info("🧠 Fase 2: Perfilamiento con Motor J4N14...")
+        log.info("Fase 2: Perfilamiento con Motor J4N14...")
         perfil: dict[str, Any] = analizar_perfil(texto, nombre)
 
         if perfil.get("error"):
@@ -256,13 +256,13 @@ async def procesar_objetivo(
             )
 
         # === FASE 3: GENERACIÓN DE VECTOR ===
-        log.info("⚔️  Fase 3: Generación de vector de ataque...")
+        log.info("Fase 3: Generación de vector de ataque...")
         # Agregar empresa al perfil para el generador
         perfil["empresa"] = objetivo.get("empresa", "la empresa")
         vector: dict[str, Any] = crear_pretexto(perfil)
 
         # === FASE 4: REPORTE FINAL ===
-        log.info("📄 Fase 4: Generando reporte final...")
+        log.info("Fase 4: Generando reporte final...")
         reporte: dict[str, Any] = generar_reporte_final(
             objetivo, perfil, vector
         )

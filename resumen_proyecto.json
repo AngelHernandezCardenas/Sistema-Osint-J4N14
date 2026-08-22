@@ -1,0 +1,31 @@
+{
+  "proyecto": "Recon365",
+  "version": "1.0.0",
+  "descripcion": "Sistema de reconocimiento OSINT y perfilamiento psicológico con IA local",
+  "arquitectura": {
+    "orquestador": "main.py",
+    "modulos": [
+      "recolector.py (Extracción con Playwright)",
+      "perfilador_ia.py (Motor J4N14 / Llama 3.1 8B local)",
+      "generador_ataques.py (Plantillas deductivas)"
+    ],
+    "utilidades": [
+      "logger.py",
+      "gestor_archivos.py"
+    ]
+  },
+  "hitos_completados": [
+    "Configuración del entorno y dependencias (requirements.txt)",
+    "Resolución de problemas de codificación (UTF-8) en terminal de Windows",
+    "Integración exitosa con Ollama y modelo local Llama 3.1 8B",
+    "Limpieza total del código fuente eliminando caracteres especiales",
+    "Inyección de contexto One-Shot en SYSTEM_PROMPT_J4N14",
+    "Prueba en lote exitosa clasificando 3 perfiles distintos (Tecnológico, Jerarquía, Estilo de vida)"
+  ],
+  "estado_actual": "MVP Finalizado y Estable",
+  "proximos_pasos_recomendados": [
+    "Integración de módulo SMTP para envíos de red teaming",
+    "Generación de payloads en PDF/DOCX",
+    "Desarrollo de panel gráfico (Web UI)"
+  ]
+}
