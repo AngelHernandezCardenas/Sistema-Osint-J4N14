@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recon365 - Attack Surface Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- vis.js para el grafo -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-radar"></i> Recon365 <span class="badge">ASM</span>
+            </div>
+            <div class="scan-section">
+                <h3>Nuevo Escaneo</h3>
+                <input type="text" id="scanOrg" placeholder="Nombre Organización" class="input-modern">
+                <input type="text" id="scanDomain" placeholder="example.com" class="input-modern">
+                <button id="btnScan" class="btn-primary"><i class="fas fa-search"></i> Iniciar OSINT</button>
+                <div id="scanStatus" class="status-msg hidden"></div>
+            </div>
+            
+            <div class="org-list">
+                <h3>Organizaciones</h3>
+                <ul id="orgList">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 id="currentOrgTitle">Selecciona una organización</h1>
+                <div class="actions">
+                    <button class="btn-icon" title="Refrescar"><i class="fas fa-sync-alt"></i></button>
+                    <button class="btn-icon" title="Exportar Reporte"><i class="fas fa-download"></i></button>
+                </div>
+            </header>
+
+            <div id="dashboard" class="dashboard hidden">
+                <!-- Risk & Stats Row -->
+                <div class="row">
+                    <div class="card risk-card">
+                        <h3>Nivel de Riesgo</h3>
+                        <div class="risk-meter">
+                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path id="riskCircle" class="circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <text id="riskScoreText" x="18" y="20.35" class="percentage">0</text>
+                            </svg>
+                            <div id="riskLevelText" class="risk-label">Calculando...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-globe"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="statDominios">0</span>
+                                <span class="stat-label">Dominios</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-microchip"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="statTechs">0</span>
+                                <span class="stat-label">Tecnologías</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-key"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="statSecretos">0</span>
+                                <span class="stat-label">Secretos Expuestos</span>
+                            </div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon alert"><i class="fas fa-bug"></i></div>
+                            <div class="stat-content">
+                                <span class="stat-value" id="statVulns">0</span>
+                                <span class="stat-label">Vulnerabilidades</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab-btn active" data-target="tab-graph"><i class="fas fa-project-diagram"></i> Grafo de Correlación</button>
+                    <button class="tab-btn" data-target="tab-domains"><i class="fas fa-list"></i> Inventario de Activos</button>
+                    <button class="tab-btn" data-target="tab-vulns"><i class="fas fa-shield-alt"></i> Hallazgos de Seguridad</button>
+                </div>
+
+                <!-- Tab: Graph -->
+                <div id="tab-graph" class="tab-content active">
+                    <div class="card graph-container">
+                        <div id="networkGraph"></div>
+                    </div>
+                </div>
+
+                <!-- Tab: Domains -->
+                <div id="tab-domains" class="tab-content hidden">
+                    <div class="card">
+                        <h3>Subdominios Descubiertos</h3>
+                        <div class="table-container">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dominio</th>
+                                        <th>IP</th>
+                                        <th>Fuente</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dominiosTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Security Findings -->
+                <div id="tab-vulns" class="tab-content hidden">
+                    <div class="row">
+                        <div class="card flex-1">
+                            <h3>Vulnerabilidades (CVEs)</h3>
+                            <ul class="vuln-list" id="vulnList">
+                            </ul>
+                        </div>
+                        <div class="card flex-1">
+                            <h3>Secretos Expuestos</h3>
+                            <ul class="secret-list" id="secretList">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container hidden">
+                <div class="spinner"></div>
+                <p>Cargando datos...</p>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state">
+                <i class="fas fa-satellite-dish"></i>
+                <h2>Ninguna organización seleccionada</h2>
+                <p>Selecciona una organización del panel lateral o inicia un nuevo escaneo OSINT.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

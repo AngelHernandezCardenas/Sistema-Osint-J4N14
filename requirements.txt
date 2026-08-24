@@ -20,3 +20,11 @@ rich>=13.7.0                   # Logging en consola con colores y tablas
 
 # --- Procesamiento de datos ---
 # (estándar de Python: csv, json, pathlib — no requieren instalación)
+
+# --- OSINT & Servidor Web (v2.0) ---
+fastapi>=0.100.0               # Backend de la API REST
+uvicorn>=0.23.0                # Servidor ASGI para FastAPI
+dnspython>=2.4.0               # Resolución DNS
+python-whois>=0.8.0            # Consultas WHOIS
+networkx>=3.0                  # Construcción de grafos de correlación
+aiohttp>=3.9.0                 # Peticiones HTTP asíncronas

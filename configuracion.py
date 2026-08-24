@@ -18,6 +18,7 @@ RUTA_DATOS: Final[Path] = RUTA_BASE / "data"
 RUTA_INPUTS: Final[Path] = RUTA_DATOS / "inputs"
 RUTA_OUTPUTS: Final[Path] = RUTA_DATOS / "outputs"
 RUTA_CAPTURAS: Final[Path] = RUTA_OUTPUTS / "capturas"
+RUTA_DB: Final[Path] = RUTA_DATOS / "db"
 
 # ============================================================================
 # CONFIGURACIÓN DEL MODELO DE IA (Motor J4N14)
@@ -68,7 +69,7 @@ LOG_BACKUP_COUNT: Final[int] = 3               # Archivos de log rotados
 # CONFIGURACIÓN DEL SISTEMA
 # ============================================================================
 
-VERSION: Final[str] = "1.0.0-mvp"
+VERSION: Final[str] = "2.0.0-osint"
 NOMBRE_SISTEMA: Final[str] = "Recon365"
 NOMBRE_MOTOR: Final[str] = "J4N14"
 

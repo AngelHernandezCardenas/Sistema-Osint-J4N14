@@ -1,21 +1,15 @@
 """
-main.py — Orquestador principal de Recon365 × Motor J4N14.
+main.py — Orquestador principal de Recon365 OSINT/ASM.
 
 Pipeline de ejecución:
-    1. Leer lista de objetivos desde data/inputs/
-    2. Para cada objetivo:
-        a. Recolectar datos públicos (Playwright headless)
-        b. Perfilar con Motor J4N14 (IA local vía Ollama)
-        c. Generar vector de Spear Phishing personalizado
-        d. Guardar reporte JSON en data/outputs/
-    3. Resumen estadístico en consola
+    - Modo Phishing (--archivo): Reconocimiento y perfilamiento (Motor J4N14)
+    - Modo Organización (--org): Escaneo OSINT pasivo completo
+    - Modo Servidor (--server): Levanta la interfaz web y API REST
 
 Uso:
-    python main.py
     python main.py --archivo objetivos.csv
-    python main.py --archivo lista.txt
-
-DISCLAIMER: Solo para auditorías de seguridad autorizadas.
+    python main.py --org "Empresa X" --dominio "example.com"
+    python main.py --server
 """
 
 import argparse
@@ -26,7 +20,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-# Forzar UTF-8 en la terminal de Windows antes de cualquier salida
+# Forzar UTF-8 en la terminal de Windows
 if sys.stdout and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 if sys.stderr and hasattr(sys.stderr, "buffer"):
@@ -41,9 +35,19 @@ from configuracion import (
     RUTA_INPUTS,
     VERSION,
 )
+
+# Módulos Legacy (Perfilamiento)
 from modulos.perfilador_ia import analizar_perfil, inicializar_motor
 from modulos.recolector import recolectar_objetivo
 from modulos.generador_ataques import crear_pretexto, generar_reporte_final
+
+# Módulos Nuevos (OSINT / ASM)
+from motores.osint_engine import motor_osint
+from motores.threat_intel_engine import motor_amenazas
+from motores.risk_engine import motor_riesgo
+from motores.correlation_engine import motor_correlacion
+from utilidades.base_datos import BaseDatos
+
 from utilidades.gestor_archivos import (
     asegurar_directorios,
     guardar_reporte,
@@ -59,315 +63,245 @@ from utilidades.logger import (
 
 log = obtener_logger(__name__)
 consola = Console()
+db = BaseDatos()
 
 
 def parsear_argumentos() -> argparse.Namespace:
-    """
-    Parsea argumentos de la línea de comandos.
-
-    Returns:
-        Namespace con los argumentos parseados.
-    """
+    """Parsea argumentos de la línea de comandos."""
     parser = argparse.ArgumentParser(
         prog="Recon365",
         description=(
-            f"{NOMBRE_SISTEMA} x {NOMBRE_MOTOR} - "
-            "Módulo de reconocimiento OSINT con perfilamiento IA."
+            f"{NOMBRE_SISTEMA} v{VERSION} - "
+            "Plataforma de Attack Surface Management & Threat Intel."
         ),
-        epilog="ADVERTENCIA: Solo para auditorías de seguridad autorizadas.",
+        epilog="ADVERTENCIA: Solo para auditorías autorizadas.",
     )
-    parser.add_argument(
+    
+    # Grupo excluyente: ¿qué queremos hacer?
+    grupo = parser.add_mutually_exclusive_group(required=True)
+    
+    grupo.add_argument(
         "--archivo",
         "-a",
         type=str,
-        default=None,
-        help=(
-            "Nombre del archivo de objetivos en data/inputs/ "
-            "(ej: objetivos.txt, lista.csv). Si no se especifica, "
-            "se usa el primer archivo encontrado."
-        ),
+        help="Archivo de objetivos (modo perfilamiento y spear phishing).",
     )
+    
+    grupo.add_argument(
+        "--org",
+        "-o",
+        type=str,
+        help="Nombre de la organización (modo escaneo OSINT pasivo).",
+    )
+    
+    grupo.add_argument(
+        "--server",
+        "-s",
+        action="store_true",
+        help="Inicia la interfaz web y la API REST.",
+    )
+    
+    # Argumentos adicionales
     parser.add_argument(
-        "--version",
-        "-v",
-        action="version",
-        version=f"{NOMBRE_SISTEMA} v{VERSION}",
+        "--dominio",
+        "-d",
+        type=str,
+        help="Dominio principal (requerido con --org).",
     )
+
     parser.add_argument(
         "--skip-motor",
         action="store_true",
         default=False,
-        help="Omitir verificación del motor de IA (para testing).",
+        help="Omitir verificación del motor de IA en modo archivo.",
     )
 
     return parser.parse_args()
 
 
+# ============================================================================
+# MODO: PERFILAMIENTO (LEGACY / SPEAR PHISHING)
+# ============================================================================
+
 def encontrar_archivo_objetivos(nombre_archivo: str | None = None) -> Path:
-    """
-    Encuentra el archivo de objetivos a procesar.
-
-    Args:
-        nombre_archivo: Nombre específico del archivo, o None para autodetección.
-
-    Returns:
-        Path al archivo de objetivos.
-
-    Raises:
-        FileNotFoundError: Si no se encuentra ningún archivo válido.
-    """
     if nombre_archivo:
         ruta: Path = RUTA_INPUTS / nombre_archivo
         if ruta.exists():
             return ruta
-        raise FileNotFoundError(
-            f"Archivo no encontrado: {ruta}\n"
-            f"Asegúrese de colocarlo en: {RUTA_INPUTS}"
-        )
+        raise FileNotFoundError(f"Archivo no encontrado: {ruta}")
 
-    # Autodetección: buscar el primer .txt o .csv en inputs/
     archivos_validos: list[Path] = sorted(
-        [
-            f for f in RUTA_INPUTS.iterdir()
-            if f.is_file() and f.suffix.lower() in (".txt", ".csv")
-        ]
+        [f for f in RUTA_INPUTS.iterdir() if f.is_file() and f.suffix.lower() in (".txt", ".csv")]
     )
 
     if not archivos_validos:
-        raise FileNotFoundError(
-            f"No se encontraron archivos de objetivos en: {RUTA_INPUTS}\n"
-            f"Coloque un archivo .txt o .csv con las URLs a analizar."
-        )
-
-    log.info(f"Archivo autodetectado: {archivos_validos[0].name}")
+        raise FileNotFoundError("No se encontraron archivos en data/inputs/")
     return archivos_validos[0]
 
-
-def mostrar_resumen(
-    resultados: list[dict[str, Any]],
-    tiempo_total: float,
-) -> None:
-    """
-    Muestra un resumen estadístico de la ejecución en consola.
-
-    Args:
-        resultados: Lista de reportes finales generados.
-        tiempo_total: Tiempo total de ejecución en segundos.
-    """
-    imprimir_separador("RESUMEN DE EJECUCIÓN")
-
-    # Contadores
-    total: int = len(resultados)
-    exitosos: int = sum(1 for r in resultados if r.get("_exitoso", False))
-    fallidos: int = total - exitosos
-
-    # Tabla de resultados
-    tabla = Table(
-        title=f"{NOMBRE_SISTEMA} x {NOMBRE_MOTOR} - Resultados",
-        show_header=True,
-        header_style="bold cyan",
-    )
-    tabla.add_column("Objetivo", style="white", min_width=20)
-    tabla.add_column("Categoría", style="magenta", justify="center")
-    tabla.add_column("Confianza", justify="center")
-    tabla.add_column("Vector", style="yellow", min_width=20)
-    tabla.add_column("Estado", justify="center")
-
-    for resultado in resultados:
-        nombre: str = resultado.get("objetivo", {}).get("nombre", "?")
-        perfil: dict = resultado.get("perfil_psicografico", {})
-        vector: dict = resultado.get("vector_ataque", {})
-        exitoso: bool = resultado.get("_exitoso", False)
-
-        categoria: str = perfil.get("categoria_predictiva", "—")
-        confianza: float = perfil.get("confianza", 0.0)
-        tipo_vector: str = vector.get("tipo", "—")
-
-        # Colorear confianza
-        if confianza >= 0.7:
-            conf_str: str = f"[green]{confianza:.0%}[/green]"
-        elif confianza >= 0.4:
-            conf_str = f"[yellow]{confianza:.0%}[/yellow]"
-        else:
-            conf_str = f"[red]{confianza:.0%}[/red]"
-
-        estado_str: str = "[green][OK][/green]" if exitoso else "[red][FAIL][/red]"
-
-        tabla.add_row(nombre, categoria, conf_str, tipo_vector, estado_str)
-
+def mostrar_resumen_perfiles(resultados: list[dict[str, Any]], tiempo_total: float) -> None:
+    imprimir_separador("RESUMEN DE PERFILAMIENTO")
+    
+    total = len(resultados)
+    exitosos = sum(1 for r in resultados if r.get("_exitoso", False))
+    
+    tabla = Table(title="Resultados de Perfilamiento", show_header=True, header_style="bold cyan")
+    tabla.add_column("Objetivo", style="white")
+    tabla.add_column("Categoría", style="magenta")
+    tabla.add_column("Confianza")
+    tabla.add_column("Vector", style="yellow")
+    
+    for r in resultados:
+        perfil = r.get("perfil_psicografico", {})
+        confianza = perfil.get("confianza", 0.0)
+        conf_str = f"[green]{confianza:.0%}[/green]" if confianza >= 0.7 else f"[red]{confianza:.0%}[/red]"
+        tabla.add_row(
+            r.get("objetivo", {}).get("nombre", "?"),
+            perfil.get("categoria_predictiva", "—"),
+            conf_str,
+            r.get("vector_ataque", {}).get("tipo", "—")
+        )
+        
     consola.print(tabla)
-    consola.print()
+    consola.print(f"\nExitosos: {exitosos}/{total} en {tiempo_total:.1f}s")
 
-    # Estadísticas
-    consola.print(f"[bold]Estadísticas:[/bold]")
-    consola.print(f"   Total de objetivos: {total}")
-    consola.print(f"   Exitosos: [green]{exitosos}[/green]")
-    consola.print(f"   Fallidos: [red]{fallidos}[/red]")
-    consola.print(f"   Tiempo total: {tiempo_total:.1f}s")
-    consola.print(
-        f"   Tiempo promedio: {tiempo_total / max(total, 1):.1f}s por objetivo"
-    )
-    consola.print()
-
-
-async def procesar_objetivo(
-    objetivo: dict[str, str],
-    indice: int,
-    total: int,
-) -> dict[str, Any]:
-    """
-    Procesa un objetivo completo a través del pipeline.
-
-    Pipeline: Recolectar → Perfilar (J4N14) → Generar Vector → Guardar.
-
-    Args:
-        objetivo: Diccionario con nombre, url, empresa.
-        indice: Número del objetivo actual (1-indexed).
-        total: Total de objetivos a procesar.
-
-    Returns:
-        Reporte final del objetivo.
-    """
-    nombre: str = objetivo.get("nombre", "desconocido")
-
+async def procesar_objetivo(objetivo: dict[str, str], indice: int, total: int) -> dict[str, Any]:
+    nombre = objetivo.get("nombre", "desconocido")
     imprimir_separador(f"Objetivo {indice}/{total}: {nombre}")
 
     try:
-        # === FASE 1: RECOLECCIÓN ===
         log.info("Fase 1: Recolección de datos...")
-        datos_recolectados: dict[str, Any] = await recolectar_objetivo(objetivo)
+        datos = await recolectar_objetivo(objetivo)
+        texto = datos.get("texto_extraido", "")
 
-        if not datos_recolectados.get("exitoso", False):
-            log.warning(
-                f"Recolección parcial/fallida para '{nombre}'. "
-                f"Errores: {datos_recolectados.get('errores', [])}"
-            )
-            # Continuar con lo que se tenga
+        log.info("Fase 2: Perfilamiento J4N14...")
+        perfil = analizar_perfil(texto, nombre)
 
-        texto: str = datos_recolectados.get("texto_extraido", "")
-
-        # === FASE 2: PERFILAMIENTO IA (Motor J4N14) ===
-        log.info("Fase 2: Perfilamiento con Motor J4N14...")
-        perfil: dict[str, Any] = analizar_perfil(texto, nombre)
-
-        if perfil.get("error"):
-            log.warning(
-                f"Error en perfilamiento de '{nombre}': {perfil['error']}"
-            )
-
-        # === FASE 3: GENERACIÓN DE VECTOR ===
-        log.info("Fase 3: Generación de vector de ataque...")
-        # Agregar empresa al perfil para el generador
+        log.info("Fase 3: Vector de ataque...")
         perfil["empresa"] = objetivo.get("empresa", "la empresa")
-        vector: dict[str, Any] = crear_pretexto(perfil)
+        vector = crear_pretexto(perfil)
 
-        # === FASE 4: REPORTE FINAL ===
-        log.info("Fase 4: Generando reporte final...")
-        reporte: dict[str, Any] = generar_reporte_final(
-            objetivo, perfil, vector
-        )
+        log.info("Fase 4: Reporte final...")
+        reporte = generar_reporte_final(objetivo, perfil, vector)
         reporte["_exitoso"] = True
-
-        # Guardar en disco
-        nombre_archivo: str = f"reporte_{nombre}"
-        ruta_guardado: Path = guardar_reporte(reporte, nombre_archivo)
-
-        imprimir_exito(
-            f"Objetivo '{nombre}' procesado — "
-            f"Categoría: {perfil.get('categoria_predictiva', '?')} — "
-            f"Reporte: {ruta_guardado.name}"
-        )
-
+        
+        guardar_reporte(reporte, f"reporte_{nombre}")
         return reporte
+    except Exception as e:
+        log.error(f"Error procesando {nombre}: {e}")
+        return {"error": str(e), "_exitoso": False}
 
-    except Exception as error:
-        log.error(f"Error procesando objetivo '{nombre}': {error}")
-        imprimir_error(f"Falló el procesamiento de '{nombre}': {error}")
-
-        reporte_error: dict[str, Any] = {
-            "objetivo": objetivo,
-            "perfil_psicografico": {},
-            "vector_ataque": {},
-            "error": str(error),
-            "_exitoso": False,
-        }
-        return reporte_error
-
-
-async def ejecutar_pipeline(args: argparse.Namespace) -> None:
-    """
-    Ejecuta el pipeline completo de Recon365.
-
-    Args:
-        args: Argumentos de línea de comandos.
-    """
-    tiempo_inicio: float = time.time()
-
-    # === INICIALIZACIÓN ===
-    imprimir_banner()
-    asegurar_directorios()
-
-    # === VERIFICAR MOTOR DE IA ===
+async def ejecutar_modo_archivo(args: argparse.Namespace) -> None:
+    tiempo_inicio = time.time()
+    
     if not args.skip_motor:
-        motor_listo: bool = inicializar_motor()
-        if not motor_listo:
-            imprimir_error(
-                "Motor J4N14 no disponible. "
-                "Ejecute 'ollama serve' e intente de nuevo. "
-                "O use --skip-motor para testing."
-            )
+        if not inicializar_motor():
+            imprimir_error("Motor J4N14 no disponible. Use --skip-motor para pruebas.")
             sys.exit(1)
-    else:
-        log.warning("Verificación del motor de IA omitida (--skip-motor).")
 
-    # === CARGAR OBJETIVOS ===
+    ruta = encontrar_archivo_objetivos(args.archivo)
+    objetivos = leer_objetivos(str(ruta))
+    
+    resultados = []
+    for i, obj in enumerate(objetivos, 1):
+        res = await procesar_objetivo(obj, i, len(objetivos))
+        resultados.append(res)
+
+    mostrar_resumen_perfiles(resultados, time.time() - tiempo_inicio)
+
+
+# ============================================================================
+# MODO: ORGANIZACIÓN (NUEVO OSINT / ASM)
+# ============================================================================
+
+async def ejecutar_modo_org(args: argparse.Namespace) -> None:
+    if not args.dominio:
+        imprimir_error("Se requiere --dominio cuando se usa --org")
+        sys.exit(1)
+        
+    org_nombre = args.org
+    dominio = args.dominio
+    tiempo_inicio = time.time()
+    
+    imprimir_separador(f"ESCANEO OSINT/ASM: {org_nombre} ({dominio})")
+    
+    # 1. Crear/Obtener org en DB
+    org_id = db.crear_organizacion(org_nombre, dominio)
+    
+    # 2. Motor OSINT
+    consola.print("[cyan]Iniciando fase de recolección OSINT (esto tomará varios minutos)...[/cyan]")
+    stats_osint = await motor_osint.analizar_organizacion(org_id, dominio)
+    
+    # 3. Threat Intel
+    consola.print("[yellow]Buscando vulnerabilidades conocidas (CVEs)...[/yellow]")
+    vulns_count = await motor_amenazas.enriquecer_tecnologias(org_id)
+    
+    # 4. Evaluacion de riesgo
+    consola.print("[magenta]Evaluando postura de riesgo...[/magenta]")
+    riesgo = motor_riesgo.evaluar_organizacion(org_id)
+    
+    # Resumen
+    tiempo_total = time.time() - tiempo_inicio
+    imprimir_separador("RESUMEN DE ESCANEO")
+    
+    tabla = Table(title=f"Resultados OSINT: {org_nombre}", show_header=True)
+    tabla.add_column("Métrica", style="cyan")
+    tabla.add_column("Valor", style="white bold")
+    
+    tabla.add_row("Subdominios Descubiertos", str(stats_osint.get("total_subdominios", 0)))
+    tabla.add_row("Tecnologías Detectadas", str(stats_osint.get("total_tecnologias", 0)))
+    tabla.add_row("Certificados (CT Logs)", str(stats_osint.get("total_certificados", 0)))
+    tabla.add_row("Secretos Expuestos", str(stats_osint.get("total_secretos", 0)))
+    tabla.add_row("Repositorios (GitHub)", str(stats_osint.get("total_repositorios", 0)))
+    tabla.add_row("Vulnerabilidades (CVE)", str(vulns_count))
+    tabla.add_row("Nivel de Riesgo", f"{riesgo['score']:.1f}/100 ({riesgo['nivel']})")
+    
+    consola.print(tabla)
+    consola.print(f"\n[green]Escaneo completado en {tiempo_total:.1f}s[/green]")
+    consola.print("\nPara visualizar los resultados y el grafo de relaciones:")
+    consola.print("  [bold]python main.py --server[/bold]")
+
+
+# ============================================================================
+# MODO: SERVIDOR
+# ============================================================================
+
+def ejecutar_modo_servidor() -> None:
     try:
-        ruta_archivo: Path = encontrar_archivo_objetivos(args.archivo)
-        objetivos: list[dict[str, str]] = leer_objetivos(str(ruta_archivo))
-    except (FileNotFoundError, ValueError) as error:
-        imprimir_error(str(error))
-        sys.exit(1)
+        import uvicorn
+        imprimir_separador("INICIANDO SERVIDOR WEB")
+        consola.print("Dashboard disponible en: [bold underline cyan]http://127.0.0.1:8000[/bold underline cyan]")
+        consola.print("API disponible en: [bold underline yellow]http://127.0.0.1:8000/docs[/bold underline yellow]")
+        consola.print("Presiona Ctrl+C para detener.")
+        
+        uvicorn.run("servidor:app", host="127.0.0.1", port=8000, reload=False, log_level="warning")
+    except ImportError:
+        imprimir_error("No se pudo importar uvicorn o fastapi. Ejecuta: pip install -r requirements.txt")
 
-    if not objetivos:
-        imprimir_error("No se encontraron objetivos válidos en el archivo.")
-        sys.exit(1)
 
-    log.info(f"Objetivos a procesar: {len(objetivos)}")
-
-    # === PROCESAR OBJETIVOS ===
-    resultados: list[dict[str, Any]] = []
-    total: int = len(objetivos)
-
-    for indice, objetivo in enumerate(objetivos, start=1):
-        resultado: dict[str, Any] = await procesar_objetivo(
-            objetivo, indice, total
-        )
-        resultados.append(resultado)
-
-    # === RESUMEN ===
-    tiempo_total: float = time.time() - tiempo_inicio
-    mostrar_resumen(resultados, tiempo_total)
-
-    imprimir_exito(
-        f"Pipeline completado en {tiempo_total:.1f}s — "
-        f"{len(resultados)} objetivos procesados."
-    )
-
+# ============================================================================
+# PUNTO DE ENTRADA
+# ============================================================================
 
 def main() -> None:
-    """Punto de entrada principal."""
-    args: argparse.Namespace = parsear_argumentos()
-
+    args = parsear_argumentos()
+    imprimir_banner()
+    asegurar_directorios()
+    
     try:
-        asyncio.run(ejecutar_pipeline(args))
+        if args.server:
+            ejecutar_modo_servidor()
+        elif args.org:
+            asyncio.run(ejecutar_modo_org(args))
+        elif args.archivo:
+            asyncio.run(ejecutar_modo_archivo(args))
+            
     except KeyboardInterrupt:
-        consola.print("\n[yellow]Ejecucion interrumpida por el usuario.[/yellow]")
+        consola.print("\n[yellow]Interrumpido por el usuario.[/yellow]")
         sys.exit(0)
-    except Exception as error:
-        consola.print(f"\n[red bold]Error fatal: {error}[/red bold]")
-        log.critical(f"Error fatal: {error}", exc_info=True)
+    except Exception as e:
+        consola.print(f"\n[red bold]Error fatal: {e}[/red bold]")
+        log.critical(f"Error fatal: {e}", exc_info=True)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
