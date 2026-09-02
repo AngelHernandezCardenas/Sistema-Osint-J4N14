@@ -5,6 +5,12 @@ Toma el perfil psicográfico generado por el Motor J4N14 y redacta
 correos de Spear Phishing altamente persuasivos basados en los
 intereses y vulnerabilidades detectadas del objetivo.
 
+Modos de operación:
+    - IA GENERATIVA (J4N14 + Dolphin): Genera correos dinámicos y únicos
+      usando el perfil psicográfico completo como contexto.
+    - PLANTILLAS (fallback): Si la IA no está disponible, usa plantillas
+      estáticas predefinidas con variables.
+
 Modelos Predictivos:
     - JERARQUIA: Correo urgente con autoridad (directivos)
     - ESTILO_VIDA: Premio falso o promoción (intereses personales)
@@ -16,20 +22,30 @@ Uso:
     reporte = generar_reporte_final(objetivo, perfil, vector)
 """
 
+import json
 import random
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
+
+import requests
 
 from utilidades.logger import obtener_logger
 
-from configuracion import NOMBRE_MOTOR, VERSION
+from configuracion import (
+    LMSTUDIO_ENDPOINT_CHAT,
+    MODELO_IA,
+    NOMBRE_MOTOR,
+    TEMPERATURA,
+    TIMEOUT_IA_GENERACION,
+    TOP_P,
+    USAR_IA_GENERATIVA,
+    VERSION,
+)
 
 log = obtener_logger(__name__)
 
 
-# ============================================================================
 # PLANTILLAS DE VECTORES DE ATAQUE
-# ============================================================================
 
 PLANTILLAS_JERARQUIA: list[dict[str, str]] = [
     {
@@ -225,9 +241,180 @@ PREMIOS_ESTILO_VIDA: dict[str, list[str]] = {
 }
 
 
-# ============================================================================
-# FUNCIONES DE GENERACIÓN DE VECTORES
-# ============================================================================
+# SYSTEM PROMPT PARA GENERACIÓN DINÁMICA CON J4N14
+
+SYSTEM_PROMPT_GENERADOR: str = """Eres J4N14, el motor de generación de vectores de \
+Spear Phishing del sistema Recon365. Tu función es redactar correos electrónicos \
+de ingeniería social ALTAMENTE persuasivos y personalizados.
+
+═══════════════════════════════════════════════════════════
+REGLAS ABSOLUTAS
+═══════════════════════════════════════════════════════════
+
+1. FORMATO: Responde ÚNICAMENTE con un objeto JSON válido con las claves:
+   {"asunto": "...", "cuerpo": "..."}
+   NO incluyas texto conversacional, explicaciones, ni markdown. Solo JSON puro.
+
+2. PERSONALIZACIÓN: Usa TODOS los datos del perfil proporcionado:
+   - Nombre del objetivo para dirigirte a él/ella
+   - Rol y empresa para establecer contexto corporativo
+   - Intereses personales para crear ganchos emocionales
+   - Vulnerabilidades detectadas para explotar puntos débiles psicológicos
+   - Industria para usar jerga y terminología específica del sector
+
+3. REALISMO: El correo debe parecer 100% legítimo:
+   - Usa un remitente creíble (departamento interno, servicio conocido, colega)
+   - Incluye detalles específicos que demuestren "conocimiento" del objetivo
+   - Genera urgencia sin ser obvio
+   - Incluye un CTA (call to action) con [ENLACE] o [ADJUNTO] como placeholder
+
+4. CATEGORÍAS:
+   - JERARQUIA: Correos de autoridad/urgencia corporativa (auditorías, reportes, compliance)
+   - ESTILO_VIDA: Premios, sorteos, ofertas, invitaciones VIP basadas en intereses
+   - TECNOLOGICO: Alertas de seguridad, actualizaciones, certificaciones, herramientas
+
+5. IDIOMA: Siempre en español. Tono profesional adaptado a la categoría.
+
+RESPONDE SOLO CON EL JSON. NADA MÁS."""
+
+
+# FUNCIONES DE GENERACIÓN CON IA (J4N14 + DOLPHIN)
+
+def _construir_prompt_generacion(perfil: dict[str, Any], categoria: str) -> str:
+    """
+    Construye el prompt de usuario para que J4N14 genere un correo personalizado.
+
+    Args:
+        perfil: Perfil psicográfico completo del objetivo.
+        categoria: Categoría predictiva (JERARQUIA, ESTILO_VIDA, TECNOLOGICO).
+
+    Returns:
+        Prompt formateado con todos los datos del perfil.
+    """
+    intereses = perfil.get("intereses", [])
+    vulnerabilidades = perfil.get("vulnerabilidades", [])
+    necesidades = perfil.get("necesidades_inferidas", [])
+
+    return (
+        f"Genera un correo de Spear Phishing para la categoría: {categoria}\n\n"
+        f"═══ DATOS DEL OBJETIVO ═══\n"
+        f"Nombre: {perfil.get('nombre_objetivo', 'Estimado/a')}\n"
+        f"Rol: {perfil.get('rol_detectado', 'no_determinado')}\n"
+        f"Empresa: {perfil.get('empresa', 'no_especificada')}\n"
+        f"Industria: {perfil.get('industria', 'no_determinada')}\n"
+        f"Intereses: {', '.join(intereses) if intereses else 'no_determinados'}\n"
+        f"Vulnerabilidades: {', '.join(vulnerabilidades) if vulnerabilidades else 'no_determinadas'}\n"
+        f"Necesidades: {', '.join(necesidades) if necesidades else 'no_determinadas'}\n"
+        f"═══ FIN DATOS ═══\n\n"
+        f"Recuerda: JSON puro con claves 'asunto' y 'cuerpo'. NADA MÁS."
+    )
+
+
+def _generar_con_ia(perfil: dict[str, Any], categoria: str) -> Optional[dict[str, str]]:
+    """
+    Genera un correo de Spear Phishing usando J4N14 (Dolphin vía LM Studio).
+
+    Envía el perfil psicográfico completo al LLM para que redacte un correo
+    único, dinámico y altamente personalizado.
+
+    Args:
+        perfil: Perfil psicográfico del Motor J4N14.
+        categoria: Categoría predictiva del objetivo.
+
+    Returns:
+        Diccionario con {asunto, cuerpo} generados, o None si falla.
+    """
+    if not USAR_IA_GENERATIVA:
+        log.debug("IA generativa deshabilitada en configuración.")
+        return None
+
+    prompt_usuario = _construir_prompt_generacion(perfil, categoria)
+
+    payload = {
+        "model": MODELO_IA,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT_GENERADOR},
+            {"role": "user", "content": prompt_usuario},
+        ],
+        "temperature": TEMPERATURA,
+        "top_p": TOP_P,
+        "max_tokens": 1024,
+        "stream": False,
+    }
+
+    try:
+        log.info("J4N14 generando correo con IA (Dolphin)...")
+        respuesta = requests.post(
+            LMSTUDIO_ENDPOINT_CHAT,
+            json=payload,
+            timeout=TIMEOUT_IA_GENERACION,
+        )
+
+        if respuesta.status_code != 200:
+            log.warning(
+                f"LM Studio respondió HTTP {respuesta.status_code}. "
+                f"Usando plantillas como fallback."
+            )
+            return None
+
+        data = respuesta.json()
+        contenido = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+
+        if not contenido:
+            log.warning("Respuesta vacía de J4N14. Fallback a plantillas.")
+            return None
+
+        # Intentar parsear JSON de la respuesta
+        contenido_limpio = contenido.strip()
+
+        # Intento directo
+        try:
+            resultado = json.loads(contenido_limpio)
+        except json.JSONDecodeError:
+            # Buscar JSON entre llaves
+            import re
+            match = re.search(r"\{.*\}", contenido_limpio, re.DOTALL)
+            if match:
+                try:
+                    resultado = json.loads(match.group(0))
+                except json.JSONDecodeError:
+                    log.warning("JSON inválido de J4N14. Fallback a plantillas.")
+                    return None
+            else:
+                log.warning("No se encontró JSON en respuesta de J4N14.")
+                return None
+
+        # Validar que tenga las claves necesarias
+        if "asunto" not in resultado or "cuerpo" not in resultado:
+            log.warning("Respuesta de J4N14 sin claves requeridas (asunto/cuerpo).")
+            return None
+
+        log.info("J4N14 generó correo exitosamente con IA.")
+        return {
+            "asunto": resultado["asunto"],
+            "cuerpo": resultado["cuerpo"],
+        }
+
+    except requests.ConnectionError:
+        log.warning(
+            "LM Studio no disponible. Fallback a plantillas estáticas."
+        )
+        return None
+    except requests.Timeout:
+        log.warning(
+            f"Timeout de J4N14 (>{TIMEOUT_IA_GENERACION}s). Fallback a plantillas."
+        )
+        return None
+    except Exception as error:
+        log.warning(f"Error en generación con IA: {error}. Fallback a plantillas.")
+        return None
+
+
+# FUNCIONES DE GENERACIÓN POR PLANTILLAS (FALLBACK)
 
 def _obtener_datos_dinamicos() -> dict[str, str]:
     """
@@ -378,8 +565,9 @@ def crear_pretexto(perfil: dict[str, Any]) -> dict[str, Any]:
     Función principal — Genera un vector de Spear Phishing personalizado
     basado en el perfil psicográfico del objetivo.
 
-    Selecciona automáticamente el modelo predictivo adecuado según
-    la categoría asignada por el Motor J4N14.
+    Pipeline híbrido:
+        1. Intenta generar con J4N14 + Dolphin (IA generativa dinámica)
+        2. Si la IA falla, usa plantillas estáticas como fallback robusto
 
     Args:
         perfil: Perfil psicográfico generado por perfilador_ia.analizar_perfil().
@@ -391,20 +579,35 @@ def crear_pretexto(perfil: dict[str, Any]) -> dict[str, Any]:
             - cuerpo: str
             - categoria_usada: str
             - confianza_perfil: float
+            - generado_por: str ("j4n14_ia" o "plantilla_estatica")
     """
     categoria: str = perfil.get("categoria_predictiva", "ESTILO_VIDA").upper()
 
     log.info(f"Generando vector — Categoría predictiva: {categoria}")
 
-    # Dispatch por categoría
-    generadores: dict[str, Any] = {
-        "JERARQUIA": _generar_vector_jerarquia,
-        "ESTILO_VIDA": _generar_vector_estilo_vida,
-        "TECNOLOGICO": _generar_vector_tecnologico,
-    }
+    # ── Intento 1: Generación dinámica con J4N14 (Dolphin) ──
+    resultado_ia: Optional[dict[str, str]] = _generar_con_ia(perfil, categoria)
 
-    generador = generadores.get(categoria, _generar_vector_estilo_vida)
-    vector: dict[str, str] = generador(perfil)
+    if resultado_ia:
+        vector: dict[str, Any] = {
+            "tipo_vector": f"{categoria} — j4n14_generado",
+            "asunto": resultado_ia["asunto"],
+            "cuerpo": resultado_ia["cuerpo"],
+            "generado_por": "j4n14_ia",
+        }
+        log.info("Vector generado por J4N14 (IA generativa).")
+    else:
+        # ── Intento 2: Fallback a plantillas estáticas ──
+        log.info("Usando plantillas estáticas como fallback.")
+        generadores: dict[str, Any] = {
+            "JERARQUIA": _generar_vector_jerarquia,
+            "ESTILO_VIDA": _generar_vector_estilo_vida,
+            "TECNOLOGICO": _generar_vector_tecnologico,
+        }
+
+        generador = generadores.get(categoria, _generar_vector_estilo_vida)
+        vector = generador(perfil)
+        vector["generado_por"] = "plantilla_estatica"
 
     # Agregar metadata
     vector["categoria_usada"] = categoria

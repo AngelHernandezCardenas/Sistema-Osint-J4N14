@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field, field_validator
 from utilidades.logger import obtener_logger, imprimir_motor
 
 from configuracion import (
-    API_ENDPOINT_CHAT,
-    API_BASE_URL,
+    LMSTUDIO_ENDPOINT_CHAT,
+    LMSTUDIO_ENDPOINT_MODELS,
     CATEGORIAS_PREDICTIVAS,
     CONTEXTO_VENTANA,
     GPU_LAYERS,
@@ -43,9 +43,7 @@ from configuracion import (
 log = obtener_logger(__name__)
 
 
-# ============================================================================
 # SYSTEM PROMPT DEL MOTOR J4N14
-# ============================================================================
 
 SYSTEM_PROMPT_J4N14: str = """Eres J4N14, un motor de análisis de inteligencia de fuentes abiertas (OSINT) \
 especializado en perfilamiento psicográfico. Tu ÚNICA función es analizar texto \
@@ -130,9 +128,7 @@ Salida JSON Esperada:
 RESPONDE SOLO CON EL JSON. NADA MÁS."""
 
 
-# ============================================================================
 # MODELO PYDANTIC PARA VALIDACIÓN DE SALIDA
-# ============================================================================
 
 class PerfilObjetivo(BaseModel):
     """Esquema de validación para la salida del Motor J4N14."""
@@ -196,9 +192,7 @@ class PerfilObjetivo(BaseModel):
         return valor_upper
 
 
-# ============================================================================
 # FUNCIONES PRINCIPALES
-# ============================================================================
 
 def inicializar_motor() -> bool:
     """
@@ -213,40 +207,16 @@ def inicializar_motor() -> bool:
     """
     imprimir_motor("Inicializando Motor J4N14...")
 
-    # --- Verificar servidor ---
-    try:
-        respuesta = requests.get(
-            API_BASE_URL,
-            timeout=10,
-        )
-        if respuesta.status_code == 200:
-            log.info(f"Servidor de IA detectado en {API_BASE_URL}")
-        else:
-            log.error(
-                f"Servidor respondió con código {respuesta.status_code}. "
-                f"Verifique que Ollama esté ejecutándose."
-            )
-            return False
-    except requests.ConnectionError:
-        log.error(
-            f"No se puede conectar a {API_BASE_URL}. "
-            f"Asegúrese de que Ollama esté ejecutándose: 'ollama serve'"
-        )
-        return False
-    except requests.Timeout:
-        log.error(f"Timeout al conectar con {API_BASE_URL}")
-        return False
-
-    # --- Verificar modelo ---
+    # --- Verificar servidor y modelo en LM Studio ---
     try:
         respuesta_modelos = requests.get(
-            f"{API_BASE_URL}/api/tags",
+            LMSTUDIO_ENDPOINT_MODELS,
             timeout=10,
         )
         if respuesta_modelos.status_code == 200:
             modelos_data: dict = respuesta_modelos.json()
             modelos_disponibles: list[str] = [
-                m.get("name", "") for m in modelos_data.get("models", [])
+                m.get("id", "") for m in modelos_data.get("data", [])
             ]
 
             # Verificar si nuestro modelo está disponible
@@ -260,16 +230,22 @@ def inicializar_motor() -> bool:
                 return True
             else:
                 log.warning(
-                    f"Modelo '{MODELO_IA}' no encontrado. "
+                    f"Modelo '{MODELO_IA}' no encontrado en LM Studio. "
                     f"Modelos disponibles: {modelos_disponibles}. "
-                    f"Ejecute: 'ollama pull {MODELO_IA}'"
                 )
-                # Intentar continuar de todas formas (Ollama descarga bajo demanda)
                 imprimir_motor(
-                    f"Modelo '{MODELO_IA}' no pre-cargado. "
-                    f"Se descargará en la primera consulta."
+                    f"Modelo '{MODELO_IA}' no encontrado en LM Studio."
                 )
                 return True
+    except requests.ConnectionError:
+        log.error(
+            f"No se puede conectar a LM Studio. "
+            f"Asegúrese de que el servidor esté ejecutándose."
+        )
+        return False
+    except requests.Timeout:
+        log.error(f"Timeout al conectar con LM Studio")
+        return False
     except Exception as error:
         log.warning(f"No se pudo verificar modelos: {error}. Continuando...")
         return True
@@ -426,20 +402,15 @@ def analizar_perfil(
         "model": MODELO_IA,
         "messages": mensajes,
         "stream": False,
-        "format": "json",
-        "options": {
-            "temperature": TEMPERATURA,
-            "top_p": TOP_P,
-            "num_predict": MAX_TOKENS,
-            "num_gpu": GPU_LAYERS,
-            "num_ctx": CONTEXTO_VENTANA,
-        },
+        "temperature": TEMPERATURA,
+        "top_p": TOP_P,
+        "max_tokens": MAX_TOKENS,
     }
 
     try:
         log.info(f"Enviando consulta al modelo '{MODELO_IA}'...")
         respuesta = requests.post(
-            API_ENDPOINT_CHAT,
+            LMSTUDIO_ENDPOINT_CHAT,
             json=payload,
             timeout=120,  # 2 minutos para generación con GPU
         )
@@ -459,6 +430,7 @@ def analizar_perfil(
         respuesta_json: dict = respuesta.json()
         contenido: str = (
             respuesta_json
+            .get("choices", [{}])[0]
             .get("message", {})
             .get("content", "")
         )

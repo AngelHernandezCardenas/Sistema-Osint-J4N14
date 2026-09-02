@@ -10,6 +10,10 @@ Uso:
 
 import asyncio
 from pathlib import Path
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,9 +53,7 @@ WEB_DIR = Path(__file__).parent / "web"
 WEB_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")
 
-# ============================================================================
 # RUTAS DE LA API
-# ============================================================================
 
 @app.get("/api/organizaciones")
 async def listar_organizaciones():
@@ -145,9 +147,7 @@ async def obtener_diff(org_id: int):
     """Obtiene diferencias con el escaneo anterior."""
     return db.comparar_snapshots(org_id)
 
-# ============================================================================
 # RUTAS DEL FRONTEND
-# ============================================================================
 
 @app.get("/")
 async def index():

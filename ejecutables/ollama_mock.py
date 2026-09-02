@@ -24,10 +24,12 @@ import random
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
+import os
+import sys
 
-# ============================================================================
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # CONFIGURACIÓN DEL MOCK
-# ============================================================================
 
 HOST = "localhost"
 PORT = 11434
@@ -36,9 +38,7 @@ MODELO_MOCK = "llama3.1:8b"
 # Simular un pequeño delay para que parezca que "piensa" (en segundos)
 DELAY_SIMULADO = 0.3
 
-# ============================================================================
 # MOTOR DE ANÁLISIS POR REGLAS (reemplaza al LLM real)
-# ============================================================================
 
 # Palabras clave por categoría
 PALABRAS_JERARQUIA = [
@@ -223,9 +223,7 @@ def extraer_nombre_y_texto(mensajes: list) -> tuple[str, str]:
     return nombre, texto
 
 
-# ============================================================================
 # SERVIDOR HTTP MOCK
-# ============================================================================
 
 class OllamaMockHandler(BaseHTTPRequestHandler):
     """Handler que simula la API REST de Ollama."""
@@ -337,11 +335,7 @@ class OllamaMockHandler(BaseHTTPRequestHandler):
             "eval_count":        len(perfil_json_str),
         })
 
-
-# ============================================================================
 # ENTRADA PRINCIPAL
-# ============================================================================
-
 if __name__ == "__main__":
     print()
     print("  ╔══════════════════════════════════════════════════╗")

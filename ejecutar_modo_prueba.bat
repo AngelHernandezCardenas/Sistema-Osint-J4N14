@@ -3,8 +3,8 @@ chcp 65001 >nul
 cls
 echo.
 echo  ╔═══════════════════════════════════════════════════╗
-echo  ║       Recon365 — MODO PRUEBA (sin Ollama)        ║
-echo  ║       Servidor Mock de IA activado               ║
+echo  ║       Recon365 — MODO PRUEBA                     ║
+echo  ║       Motor J4N14 [MOCK] activado                ║
 echo  ╚═══════════════════════════════════════════════════╝
 echo.
 
@@ -32,7 +32,7 @@ if not errorlevel 1 (
 
 REM ── Iniciar servidor mock en background ───────────────────────────────────────
 echo  [1/2] Iniciando servidor Ollama MOCK...
-start /B "" python ollama_mock.py > mock_server.log 2>&1
+start /B "" python ejecutables\ollama_mock.py > mock_server.log 2>&1
 
 REM ── Esperar que el mock levante ────────────────────────────────────────────────
 echo  [INFO] Esperando que el mock inicie (2 segundos)...
@@ -50,12 +50,13 @@ echo  [OK] Servidor mock activo en http://localhost:11434
 
 :iniciar_main
 REM ── Ejecutar Recon365 ──────────────────────────────────────────────────────────
-echo.
-echo  [2/2] Iniciando Recon365...
-echo  ════════════════════════════════════════════════════
-echo.
-python main.py
+start cmd /k "title Ollama Mock Server && python ejecutables\ollama_mock.py"
 
+echo.
+echo  Iniciando Recon365 en modo prueba...
+echo  ================================================
+echo.
+python ejecutables\main.py --archivo %ARCHIVO_OBJETIVOS% --skip-motor 
 echo.
 echo  ════════════════════════════════════════════════════
 echo  Ejecucion finalizada. Cerrando servidor mock...

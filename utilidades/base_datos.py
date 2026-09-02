@@ -38,9 +38,7 @@ class BaseDatos:
         self._conexion: Optional[sqlite3.Connection] = None
         self._inicializar()
 
-    # ════════════════════════════════════════════════════════════════
     # CONEXIÓN
-    # ════════════════════════════════════════════════════════════════
 
     def _conectar(self) -> sqlite3.Connection:
         """Obtiene o crea una conexión SQLite."""
@@ -57,9 +55,7 @@ class BaseDatos:
             self._conexion.close()
             self._conexion = None
 
-    # ════════════════════════════════════════════════════════════════
     # INICIALIZACIÓN DE ESQUEMA
-    # ════════════════════════════════════════════════════════════════
 
     def _inicializar(self) -> None:
         """Crea las tablas si no existen."""
@@ -265,9 +261,7 @@ class BaseDatos:
         conn.commit()
         log.debug(f"Base de datos inicializada: {self.ruta}")
 
-    # ════════════════════════════════════════════════════════════════
     # ORGANIZACIONES
-    # ════════════════════════════════════════════════════════════════
 
     def crear_organizacion(
         self, nombre: str, dominio_principal: str, descripcion: str = ""
@@ -310,9 +304,7 @@ class BaseDatos:
         rows = conn.execute("SELECT * FROM organizaciones ORDER BY creado_en DESC").fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # DOMINIOS Y SUBDOMINIOS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_dominio(
         self, org_id: int, dominio: str, tipo: str = "subdominio",
@@ -361,9 +353,7 @@ class BaseDatos:
         ).fetchone()
         return row["id"] if row else None
 
-    # ════════════════════════════════════════════════════════════════
     # REGISTROS DNS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_registro_dns(
         self, dominio_id: int, tipo: str, valor: str, ttl: Optional[int] = None,
@@ -386,9 +376,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # WHOIS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_whois(
         self, dominio_id: int, registrante: str = "", organizacion: str = "",
@@ -408,9 +396,7 @@ class BaseDatos:
         conn.commit()
         return cursor.lastrowid
 
-    # ════════════════════════════════════════════════════════════════
     # CERTIFICADOS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_certificado(
         self, org_id: int, dominio_comun: str, sans: str = "",
@@ -439,9 +425,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # TECNOLOGÍAS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_tecnologia(
         self, dominio_id: int, nombre: str, version: str = "",
@@ -469,9 +453,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # SECRETOS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_secreto(
         self, org_id: int, tipo: str, valor_ofuscado: str,
@@ -498,9 +480,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # VULNERABILIDADES
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_vulnerabilidad(
         self, tecnologia_id: int, cve_id: str, descripcion: str = "",
@@ -533,9 +513,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # RIESGO
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_evaluacion_riesgo(
         self, org_id: int, entidad_tipo: str, entidad_id: int,
@@ -552,9 +530,7 @@ class BaseDatos:
         conn.commit()
         return cursor.lastrowid
 
-    # ════════════════════════════════════════════════════════════════
     # ALERTAS
-    # ════════════════════════════════════════════════════════════════
 
     def crear_alerta(
         self, org_id: int, tipo: str, titulo: str, descripcion: str = "",
@@ -583,9 +559,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # REPOSITORIOS
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_repositorio(
         self, org_id: int, nombre: str, url: str, descripcion: str = "",
@@ -612,9 +586,7 @@ class BaseDatos:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    # ════════════════════════════════════════════════════════════════
     # HEADERS DE SEGURIDAD
-    # ════════════════════════════════════════════════════════════════
 
     def agregar_header_seguridad(
         self, dominio_id: int, header: str, valor: str = "",
@@ -631,9 +603,7 @@ class BaseDatos:
         conn.commit()
         return cursor.lastrowid
 
-    # ════════════════════════════════════════════════════════════════
     # SNAPSHOTS Y MONITOREO
-    # ════════════════════════════════════════════════════════════════
 
     def crear_snapshot(self, org_id: int) -> int:
         """Crea un snapshot del estado actual para comparación futura."""
@@ -697,9 +667,7 @@ class BaseDatos:
             "total_previo": len(dominios_previos),
         }
 
-    # ════════════════════════════════════════════════════════════════
     # ESTADÍSTICAS
-    # ════════════════════════════════════════════════════════════════
 
     def obtener_estadisticas(self, org_id: int) -> dict[str, int]:
         """Obtiene estadísticas generales de una organización."""
@@ -738,9 +706,7 @@ class BaseDatos:
 
         return stats
 
-    # ════════════════════════════════════════════════════════════════
     # EXPORTACIÓN PARA GRAFO
-    # ════════════════════════════════════════════════════════════════
 
     def exportar_grafo(self, org_id: int) -> dict[str, Any]:
         """Exporta datos para construir el grafo de correlación."""

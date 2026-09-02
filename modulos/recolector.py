@@ -5,6 +5,7 @@ Utiliza Playwright en modo headless para:
     - Validar accesibilidad de URLs públicas
     - Extraer texto relevante (biografías, descripciones) del DOM
     - Tomar capturas de pantalla full-page
+    - Refinar texto extraído con J4N14 (Dolphin) para filtrar ruido
 
 Manejo de errores con reintentos y backoff exponencial.
 
@@ -14,9 +15,12 @@ Uso:
 """
 
 import asyncio
+import json
 import time
 from pathlib import Path
 from typing import Any, Optional
+
+import requests as http_requests
 
 from playwright.async_api import (
     Browser,
@@ -32,19 +36,23 @@ from utilidades.gestor_archivos import guardar_captura
 
 from configuracion import (
     DELAY_ENTRE_REINTENTOS,
+    LMSTUDIO_ENDPOINT_CHAT,
     MAX_REINTENTOS,
+    MODELO_IA,
     NAVEGADOR_HEADLESS,
+    TEMPERATURA,
     TIMEOUT_ESPERA,
+    TIMEOUT_IA_REFINAMIENTO,
     TIMEOUT_NAVEGADOR,
+    TOP_P,
+    USAR_IA_GENERATIVA,
     USER_AGENT,
 )
 
 log = obtener_logger(__name__)
 
 
-# ============================================================================
 # SELECTORES CSS COMUNES PARA BIOGRAFÍAS / DESCRIPCIONES
-# ============================================================================
 
 SELECTORES_BIOGRAFA: list[str] = [
     # Genéricos
@@ -65,6 +73,158 @@ SELECTORES_BIOGRAFA: list[str] = [
     ".content",
     "#content",
 ]
+
+
+# SYSTEM PROMPT PARA REFINAMIENTO DE TEXTO CON J4N14
+
+SYSTEM_PROMPT_EXTRACTOR: str = """Eres J4N14, el motor de extracción inteligente del \
+sistema Recon365. Tu función es limpiar y filtrar texto extraído de páginas web \
+para dejar SOLO la información relevante para perfilamiento OSINT.
+
+═══════════════════════════════════════════════════════════
+REGLAS
+═══════════════════════════════════════════════════════════
+
+1. FORMATO: Responde ÚNICAMENTE con un JSON:
+   {"texto_refinado": "...", "elementos_detectados": ["..."]}
+
+2. CONSERVAR: Biografía, rol profesional, cargo, empresa, industria, educación,
+   habilidades, certificaciones, intereses, hobbies, logros, publicaciones,
+   actividad profesional, idiomas, ubicación.
+
+3. ELIMINAR: Menús de navegación, footers, cookies, banners, publicidad,
+   scripts, botones, términos legales, políticas de privacidad, código HTML/CSS,
+   contadores de seguidores/likes (conservar solo si son relevantes),
+   texto repetido, URLs sin contexto.
+
+4. ESTRUCTURA: Organiza el texto refinado en párrafos coherentes.
+   Mantiene el idioma original del texto.
+
+5. "elementos_detectados" debe listar qué tipos de información encontraste:
+   ej: ["biografía", "rol_profesional", "empresa", "intereses", "educación"]
+
+RESPONDE SOLO CON EL JSON. NADA MÁS."""
+
+
+# FUNCIÓN DE REFINAMIENTO CON IA
+
+def _refinar_texto_con_ia(
+    texto_bruto: str,
+    nombre: str,
+    url: str,
+) -> Optional[dict[str, Any]]:
+    """
+    Envía el texto bruto extraído del DOM a J4N14 para que filtre ruido
+    y devuelva solo la información relevante para perfilamiento OSINT.
+
+    Args:
+        texto_bruto: Texto crudo extraído de la página web.
+        nombre: Nombre del objetivo.
+        url: URL de origen.
+
+    Returns:
+        Diccionario con texto_refinado y elementos_detectados, o None si falla.
+    """
+    if not USAR_IA_GENERATIVA:
+        log.debug("IA generativa deshabilitada. Saltando refinamiento.")
+        return None
+
+    if not texto_bruto or len(texto_bruto.strip()) < 30:
+        log.debug("Texto demasiado corto para refinar.")
+        return None
+
+    prompt_usuario = (
+        f"Limpia y filtra el siguiente texto extraído de la página web de "
+        f"'{nombre}' ({url}). Conserva SOLO la información útil para "
+        f"perfilamiento OSINT.\n\n"
+        f"═══ TEXTO BRUTO ═══\n\n"
+        f"{texto_bruto[:3000]}\n\n"
+        f"═══ FIN TEXTO ═══\n\n"
+        f"Responde SOLO con JSON: {{\"texto_refinado\": \"...\", \"elementos_detectados\": [...]}}"
+    )
+
+    payload = {
+        "model": MODELO_IA,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT_EXTRACTOR},
+            {"role": "user", "content": prompt_usuario},
+        ],
+        "temperature": 0.2,  # Más determinista para extracción
+        "top_p": TOP_P,
+        "max_tokens": 1500,
+        "stream": False,
+    }
+
+    try:
+        log.info("J4N14 refinando texto extraído...")
+        respuesta = http_requests.post(
+            LMSTUDIO_ENDPOINT_CHAT,
+            json=payload,
+            timeout=TIMEOUT_IA_REFINAMIENTO,
+        )
+
+        if respuesta.status_code != 200:
+            log.warning(
+                f"LM Studio respondió HTTP {respuesta.status_code} en refinamiento. "
+                f"Usando texto bruto."
+            )
+            return None
+
+        data = respuesta.json()
+        contenido = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+        )
+
+        if not contenido:
+            log.warning("Respuesta vacía de J4N14 en refinamiento.")
+            return None
+
+        # Parsear JSON
+        contenido_limpio = contenido.strip()
+        try:
+            resultado = json.loads(contenido_limpio)
+        except json.JSONDecodeError:
+            import re
+            match = re.search(r"\{.*\}", contenido_limpio, re.DOTALL)
+            if match:
+                try:
+                    resultado = json.loads(match.group(0))
+                except json.JSONDecodeError:
+                    log.warning("JSON inválido en refinamiento. Usando texto bruto.")
+                    return None
+            else:
+                log.warning("No se encontró JSON en refinamiento.")
+                return None
+
+        texto_refinado = resultado.get("texto_refinado", "")
+        elementos = resultado.get("elementos_detectados", [])
+
+        if texto_refinado:
+            log.info(
+                f"Texto refinado por J4N14: {len(texto_bruto)} → {len(texto_refinado)} chars. "
+                f"Elementos: {', '.join(elementos) if elementos else 'ninguno'}"
+            )
+            return {
+                "texto_refinado": texto_refinado,
+                "elementos_detectados": elementos,
+            }
+
+        return None
+
+    except http_requests.ConnectionError:
+        log.warning("LM Studio no disponible para refinamiento. Usando texto bruto.")
+        return None
+    except http_requests.Timeout:
+        log.warning(
+            f"Timeout de J4N14 en refinamiento (>{TIMEOUT_IA_REFINAMIENTO}s). "
+            f"Usando texto bruto."
+        )
+        return None
+    except Exception as error:
+        log.warning(f"Error en refinamiento con IA: {error}. Usando texto bruto.")
+        return None
 
 
 async def validar_perfil(url: str) -> bool:
@@ -293,6 +453,8 @@ async def recolectar_objetivo(
         "url": url,
         "empresa": empresa,
         "texto_extraido": "",
+        "texto_refinado": "",
+        "elementos_detectados": [],
         "ruta_captura": None,
         "exitoso": False,
         "errores": [],
@@ -327,7 +489,19 @@ async def recolectar_objetivo(
         log.error(error_msg)
         resultado["errores"].append(error_msg)
 
-    # --- Paso 3: Captura de pantalla ---
+    # --- Paso 3: Refinar texto con J4N14 ---
+    if resultado["texto_extraido"]:
+        refinamiento = _refinar_texto_con_ia(
+            resultado["texto_extraido"], nombre, url
+        )
+        if refinamiento:
+            resultado["texto_refinado"] = refinamiento["texto_refinado"]
+            resultado["elementos_detectados"] = refinamiento["elementos_detectados"]
+        else:
+            # Fallback: usar texto bruto como refinado también
+            resultado["texto_refinado"] = resultado["texto_extraido"]
+
+    # --- Paso 4: Captura de pantalla ---
     try:
         ruta_captura: Optional[Path] = await tomar_captura(url, nombre)
         resultado["ruta_captura"] = str(ruta_captura) if ruta_captura else None

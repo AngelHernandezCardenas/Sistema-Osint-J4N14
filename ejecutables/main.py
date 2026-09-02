@@ -19,6 +19,9 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Forzar UTF-8 en la terminal de Windows
 if sys.stdout and hasattr(sys.stdout, "buffer"):
@@ -119,9 +122,7 @@ def parsear_argumentos() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# ============================================================================
 # MODO: PERFILAMIENTO (LEGACY / SPEAR PHISHING)
-# ============================================================================
 
 def encontrar_archivo_objetivos(nombre_archivo: str | None = None) -> Path:
     if nombre_archivo:
@@ -171,7 +172,9 @@ async def procesar_objetivo(objetivo: dict[str, str], indice: int, total: int) -
     try:
         log.info("Fase 1: Recolección de datos...")
         datos = await recolectar_objetivo(objetivo)
-        texto = datos.get("texto_extraido", "")
+
+        # Usar texto refinado por J4N14 si está disponible, sino texto bruto
+        texto = datos.get("texto_refinado") or datos.get("texto_extraido", "")
 
         log.info("Fase 2: Perfilamiento J4N14...")
         perfil = analizar_perfil(texto, nombre)
@@ -209,9 +212,7 @@ async def ejecutar_modo_archivo(args: argparse.Namespace) -> None:
     mostrar_resumen_perfiles(resultados, time.time() - tiempo_inicio)
 
 
-# ============================================================================
 # MODO: ORGANIZACIÓN (NUEVO OSINT / ASM)
-# ============================================================================
 
 async def ejecutar_modo_org(args: argparse.Namespace) -> None:
     if not args.dominio:
@@ -260,10 +261,7 @@ async def ejecutar_modo_org(args: argparse.Namespace) -> None:
     consola.print("\nPara visualizar los resultados y el grafo de relaciones:")
     consola.print("  [bold]python main.py --server[/bold]")
 
-
-# ============================================================================
 # MODO: SERVIDOR
-# ============================================================================
 
 def ejecutar_modo_servidor() -> None:
     try:
@@ -277,10 +275,7 @@ def ejecutar_modo_servidor() -> None:
     except ImportError:
         imprimir_error("No se pudo importar uvicorn o fastapi. Ejecuta: pip install -r requirements.txt")
 
-
-# ============================================================================
 # PUNTO DE ENTRADA
-# ============================================================================
 
 def main() -> None:
     args = parsear_argumentos()
@@ -302,6 +297,5 @@ def main() -> None:
         consola.print(f"\n[red bold]Error fatal: {e}[/red bold]")
         log.critical(f"Error fatal: {e}", exc_info=True)
         sys.exit(1)
-
 if __name__ == "__main__":
     main()

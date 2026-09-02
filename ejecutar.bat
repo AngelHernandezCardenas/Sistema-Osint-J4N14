@@ -46,7 +46,7 @@ echo.
 echo  Iniciando Recon365...
 echo  ════════════════════════════════════════════════════
 echo.
-python main.py
+python ejecutables\main.py
 
 echo.
 echo  ════════════════════════════════════════════════════

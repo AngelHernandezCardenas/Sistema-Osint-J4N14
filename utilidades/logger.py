@@ -31,9 +31,7 @@ from configuracion import (
     RUTA_BASE,
 )
 
-# ============================================================================
 # TEMA PERSONALIZADO PARA RICH
-# ============================================================================
 
 _TEMA_RECON365 = Theme({
     "info": "cyan",
@@ -50,9 +48,7 @@ _TEMA_RECON365 = Theme({
 _stdout_utf8 = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace") if hasattr(sys.stdout, 'buffer') else sys.stdout
 _consola = Console(theme=_TEMA_RECON365, file=_stdout_utf8, highlight=False)
 
-# ============================================================================
 # REGISTRO DE LOGGERS CREADOS (evitar duplicados)
-# ============================================================================
 
 _loggers_registrados: dict[str, logging.Logger] = {}
 
