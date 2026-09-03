@@ -1,0 +1,31 @@
+﻿# ===========================================================================
+# Recon365 — Dependencias Rama LIGHT (sin GPU, sin IA local)
+# ===========================================================================
+# Para la rama 'main' (con GPU 8 GB VRAM y LM Studio), usar requirements.txt
+# ===========================================================================
+
+# --- HTTP y comunicación ---
+requests>=2.31.0               # Llamadas HTTP (SMTP, APIs)
+urllib3>=2.1.0                 # Gestión de conexiones HTTP
+
+# --- Interfaz y logging ---
+rich>=13.7.0                   # Logging en consola con colores y tablas
+
+# --- Procesamiento de datos ---
+# (estándar de Python: csv, json, pathlib, smtplib — no requieren instalación)
+
+# --- OPCIONAL: GP Optimizer (Programación Genética, 100% CPU) ---
+# Descomenta estas líneas y establece USAR_GP_OPTIMIZER = True en configuracion.py
+# para activar la selección evolutiva de plantillas.
+# deap>=1.4.1
+# numpy>=1.24.0
+
+# --- NO incluido en rama light (requiere GPU / instalación especial) ---
+# playwright>=1.40.0           # Solo en rama main
+# pydantic>=2.5.0              # Solo en rama main
+# fastapi>=0.100.0             # Solo en rama main
+# uvicorn>=0.23.0              # Solo en rama main
+# dnspython>=2.4.0             # Solo en rama main
+# python-whois>=0.8.0          # Solo en rama main
+# networkx>=3.0                # Solo en rama main
+# aiohttp>=3.9.0               # Solo en rama main

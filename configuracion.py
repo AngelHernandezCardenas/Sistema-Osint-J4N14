@@ -82,3 +82,22 @@ CATEGORIAS_PREDICTIVAS: Final[list[str]] = [
 
 # Extensiones de archivo de entrada soportadas
 EXTENSIONES_ENTRADA: Final[list[str]] = [".txt", ".csv"]
+
+# ── MODO LIGHT (sin GPU, sin IA local) ──────────────────────────────────────
+# Rama 'light': para máquinas sin GPU / sin LM Studio instalado.
+# Cuando es True, el sistema salta automáticamente la generación con IA y usa
+# el pipeline de plantillas estáticas que ya existe en generador_ataques.py.
+# En la rama 'main' (GPU disponible), este flag es False.
+MODO_LIGHT: Final[bool] = True
+
+# ── OPTIMIZADOR GP (Programación Genética con DEAP) ─────────────────────────
+# Motor evolutivo que aprende a seleccionar la plantilla óptima para cada perfil.
+# Corre 100% en CPU — sin GPU, sin IA local. Requiere: pip install deap numpy
+# En rama 'light' se incluye desactivado por defecto; activar cuando DEAP esté
+# instalado y se quiera experimentar con optimización dinámica de plantillas.
+USAR_GP_OPTIMIZER: Final[bool] = False   # ← Cambiar a True para activar el GP
+GP_NUM_FASES: Final[int] = 10            # Entornos distintos a recorrer
+GP_GEN_POR_FASE: Final[int] = 5         # Generaciones por fase
+GP_TAM_POBLACION: Final[int] = 50       # Individuos por generación
+GP_TAM_ELITE: Final[int] = 10           # Semilla elite entre fases
+GP_MAX_TREE_HEIGHT: Final[int] = 8      # Límite de altura del árbol (control bloat)

@@ -34,10 +34,12 @@ from utilidades.logger import obtener_logger
 from configuracion import (
     LMSTUDIO_ENDPOINT_CHAT,
     MODELO_IA,
+    MODO_LIGHT,
     NOMBRE_MOTOR,
     TEMPERATURA,
     TIMEOUT_IA_GENERACION,
     TOP_P,
+    USAR_GP_OPTIMIZER,
     USAR_IA_GENERATIVA,
     VERSION,
 )
@@ -324,6 +326,11 @@ def _generar_con_ia(perfil: dict[str, Any], categoria: str) -> Optional[dict[str
     Returns:
         Diccionario con {asunto, cuerpo} generados, o None si falla.
     """
+    # ── Modo light: saltar IA sin intentar ninguna conexión ──
+    if MODO_LIGHT:
+        log.info("[LIGHT] Modo light activo — saltando IA generativa, usando plantillas estáticas.")
+        return None
+
     if not USAR_IA_GENERATIVA:
         log.debug("IA generativa deshabilitada en configuración.")
         return None
@@ -585,19 +592,38 @@ def crear_pretexto(perfil: dict[str, Any]) -> dict[str, Any]:
 
     log.info(f"Generando vector — Categoría predictiva: {categoria}")
 
-    # ── Intento 1: Generación dinámica con J4N14 (Dolphin) ──
-    resultado_ia: Optional[dict[str, str]] = _generar_con_ia(perfil, categoria)
+    # ── Intento 0 (opcional): GP Optimizer — selección evolutiva de plantillas ──
+    # Solo activo si USAR_GP_OPTIMIZER=True en configuracion.py y DEAP está instalado.
+    # En modo light, este bloque es un no-op (USAR_GP_OPTIMIZER=False por defecto).
+    vector: Optional[dict[str, Any]] = None
+    if USAR_GP_OPTIMIZER:
+        try:
+            from motores.gp_optimizer import seleccionar_plantilla_con_gp
+            log.info("[GP] Intentando selección de plantilla con GP Optimizer...")
+            vector = seleccionar_plantilla_con_gp(perfil, categoria)
+            if vector:
+                vector["generado_por"] = "gp_optimizer"
+                log.info("[GP] Vector seleccionado por GP Optimizer.")
+        except ImportError:
+            log.debug("[GP] DEAP no instalado — GP Optimizer no disponible.")
+        except Exception as _gp_err:
+            log.warning(f"[GP] Error en GP Optimizer: {_gp_err}. Continuando con pipeline normal.")
 
-    if resultado_ia:
-        vector: dict[str, Any] = {
-            "tipo_vector": f"{categoria} — j4n14_generado",
-            "asunto": resultado_ia["asunto"],
-            "cuerpo": resultado_ia["cuerpo"],
-            "generado_por": "j4n14_ia",
-        }
-        log.info("Vector generado por J4N14 (IA generativa).")
-    else:
-        # ── Intento 2: Fallback a plantillas estáticas ──
+    # ── Intento 1: Generación dinámica con J4N14 (Dolphin) ──
+    if vector is None:
+        resultado_ia: Optional[dict[str, str]] = _generar_con_ia(perfil, categoria)
+
+        if resultado_ia:
+            vector = {
+                "tipo_vector": f"{categoria} — j4n14_generado",
+                "asunto": resultado_ia["asunto"],
+                "cuerpo": resultado_ia["cuerpo"],
+                "generado_por": "j4n14_ia",
+            }
+            log.info("Vector generado por J4N14 (IA generativa).")
+
+    # ── Intento 2: Fallback a plantillas estáticas ──
+    if vector is None:
         log.info("Usando plantillas estáticas como fallback.")
         generadores: dict[str, Any] = {
             "JERARQUIA": _generar_vector_jerarquia,
