@@ -94,7 +94,19 @@ def solicitar_perfil() -> dict:
 
 
 def solicitar_smtp() -> tuple[ConfigSMTP, str, str]:
-    """Solicita la configuración SMTP al usuario."""
+    """Solicita la configuración SMTP al usuario.
+
+    Si las variables de entorno SMTP_* están definidas, las usa automáticamente
+    sin pedir contraseña interactiva (modo pruebas rápidas).
+
+    Variables de entorno soportadas:
+        SMTP_SERVIDOR   — ej. smtp.gmail.com
+        SMTP_PUERTO     — ej. 587
+        SMTP_USUARIO    — ej. tu@gmail.com
+        SMTP_PASSWORD   — App Password (nunca en el repo)
+        SMTP_REMITENTE  — Email del "from" spoofed (opcional)
+        SMTP_NOMBRE     — Nombre del remitente (opcional)
+    """
     consola.print("\n[bold]═══ CONFIGURACIÓN SMTP ═══[/bold]\n")
 
     consola.print("[dim]Proveedores comunes:[/dim]")
@@ -110,8 +122,26 @@ def solicitar_smtp() -> tuple[ConfigSMTP, str, str]:
     consola.print(tabla)
     consola.print()
 
-    servidor = Prompt.ask("[cyan]Servidor SMTP[/cyan]", default="smtp.gmail.com")
-    puerto = int(Prompt.ask("[cyan]Puerto[/cyan]", default="587"))
+    # ── Autocompletado desde variables de entorno (modo pruebas) ────────────
+    _env_servidor  = os.environ.get("SMTP_SERVIDOR", "")
+    _env_puerto    = os.environ.get("SMTP_PUERTO", "")
+    _env_usuario   = os.environ.get("SMTP_USUARIO", "")
+    _env_password  = os.environ.get("SMTP_PASSWORD", "")
+
+    if _env_password:
+        consola.print(
+            "[dim green]ℹ  Credenciales cargadas desde variables de entorno "
+            "(SMTP_PASSWORD detectado). Saltando prompt interactivo.[/dim green]\n"
+        )
+
+    servidor = Prompt.ask(
+        "[cyan]Servidor SMTP[/cyan]",
+        default=_env_servidor if _env_servidor else "smtp.gmail.com",
+    )
+    puerto = int(Prompt.ask(
+        "[cyan]Puerto[/cyan]",
+        default=_env_puerto if _env_puerto else "587",
+    ))
 
     usar_tls = True
     usuario = ""
@@ -122,8 +152,16 @@ def solicitar_smtp() -> tuple[ConfigSMTP, str, str]:
         consola.print("[dim]Modo local: sin TLS ni autenticación.[/dim]")
     else:
         usar_tls = Confirm.ask("[cyan]¿Usar TLS?[/cyan]", default=True)
-        usuario = Prompt.ask("[cyan]Usuario (email)[/cyan]")
-        password = getpass.getpass("  Contraseña/App Password: ")
+        usuario = Prompt.ask(
+            "[cyan]Usuario (email)[/cyan]",
+            default=_env_usuario if _env_usuario else "",
+        )
+        if _env_password:
+            # Usar la contraseña del entorno sin prompt interactivo
+            password = _env_password
+            consola.print("[dim]  Contraseña/App Password: [green]*** (desde SMTP_PASSWORD)[/green][/dim]")
+        else:
+            password = getpass.getpass("  Contraseña/App Password: ")
 
     config = ConfigSMTP(
         servidor=servidor,
@@ -134,14 +172,17 @@ def solicitar_smtp() -> tuple[ConfigSMTP, str, str]:
     )
 
     # Remitente (el "from" del correo)
+    _env_remitente = os.environ.get("SMTP_REMITENTE", "")
+    _env_nombre    = os.environ.get("SMTP_NOMBRE", "")
+
     consola.print("\n[bold]═══ IDENTIDAD DEL REMITENTE ═══[/bold]\n")
     nombre_remitente = Prompt.ask(
         "[cyan]Nombre del remitente (spoofed)[/cyan]",
-        default="Equipo de Seguridad TI"
+        default=_env_nombre if _env_nombre else "Equipo de Seguridad TI",
     )
     email_remitente = Prompt.ask(
         "[cyan]Email del remitente[/cyan]",
-        default=usuario if usuario else "seguridad@techcorp.com"
+        default=_env_remitente if _env_remitente else (usuario if usuario else "seguridad@techcorp.com"),
     )
 
     return config, email_remitente, nombre_remitente
